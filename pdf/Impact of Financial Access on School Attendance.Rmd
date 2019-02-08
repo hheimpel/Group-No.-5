@@ -26,3 +26,7 @@ constraints play an important role in determining aggregate productivity, nation
 
 The question we seek to answer is if the mass introduction in 2002 of a bank (Banco Azteca) which offered new financial services to communities in Mexico which previously had no access to banking services, affected the attendance to school of students in those communities. The intention of the project is to establish the relationship between attendance to school by children under 15 years of age and access to a banking service in Mexico. To establish the relationship a we will make use of the appropriate econometric tools and empirical strategy. The relevance of this question is given by the likelihood of productivity being affected as well. Even if having access to banking services does not affect school attendance, the question would still be relevant to policy making since it could be a dimension for the decision of the policy maker.
 
+\section{Potential Issues}
+
+The data from the Mexican Family Life Survey is in .dta form, however this should not pose a significant problem to the overall project; some data tidying and arranging will have to be done but the information is easily accesible. On the other hand, data from the Comision Nacional Bancaria y de Valores is in .xls form and requires some editing and cleansing to tidy the data set. This should not pose a significant problem either since the data is easily accessible as well. 
+
