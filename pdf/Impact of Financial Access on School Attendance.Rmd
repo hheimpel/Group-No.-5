@@ -1,0 +1,28 @@
+---
+title: "Impact of Financial Access on School Attendance"
+author: "Group No. 5"
+date: "February 11, 2019"
+output: pdf_document
+fontsize: 12pt
+documentclass: article
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+\textbf{Members:}\
+\begin{itemize}
+  \itemsep-.6em
+  \item Hector Hernandez Heimpel (NetID: hh744) - email: hh744@georgetown.edu\
+  \item Tingjie  Meng (NetID: tm1305) - email: tm1305@georgetown.edu\
+  \item Liumin Chen (NetID: lc1077) - email: lc1077@georgetown.edu\
+\end{itemize}
+\textbf{Github Repository:} https://github.com/hheimpel/Group-No.-5 
+
+\section{Problem Statement}
+
+Education has long been considered important to economic growth. The general idea behind this is that people with higher education have higher income, as evidenced by Ashenfelter (1997). There are many factors that could affect why a child attends or does not attend school. In particular, financial access could affect schooling through access to credit and savings with better conditions. By limiting the incentives and capacity to invest in human capital, credit
+constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development Becker (1975). According to Aportela (1998) it was found that access to financial services increases savings on low-income people. What this could imply is that with better access to financial instruments that allow people to save money, a household head may better prepare for the expenses that will have to be made when the child goes to school. 
+
+The question we seek to answer is if the mass introduction in 2002 of a bank (Banco Azteca) which offered new financial services to communities in Mexico which previously had no access to banking services, affected the attendance to school of students in those communities. The intention of the project is to establish the relationship between attendance to school by children under 15 years of age and access to a banking service in Mexico. To establish the relationship a we will make use of the appropriate econometric tools and empirical strategy. The relevance of this question is given by the likelihood of productivity being affected as well. Even if having access to banking services does not affect school attendance, the question would still be relevant to policy making since it could be a dimension for the decision of the policy maker.
+
