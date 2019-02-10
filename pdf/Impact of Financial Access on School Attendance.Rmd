@@ -24,9 +24,28 @@ knitr::opts_chunk$set(echo = TRUE)
 Education has long been considered important to economic growth. The general idea behind this is that people with higher education have higher income, as evidenced by Ashenfelter (1997). There are many factors that could affect why a child attends or does not attend school. In particular, financial access could affect schooling through access to credit and savings with better conditions. By limiting the incentives and capacity to invest in human capital, credit
 constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development Becker (1975). According to Aportela (1998) it was found that access to financial services increases savings on low-income people. What this could imply is that with better access to financial instruments that allow people to save money, a household head may better prepare for the expenses that will have to be made when the child goes to school. 
 
-The question we seek to answer is if the mass introduction in 2002 of a bank (Banco Azteca) which offered new financial services to communities in Mexico which previously had no access to banking services, affected the attendance to school of students in those communities. The intention of the project is to establish the relationship between attendance to school by children under 15 years of age and access to a banking service in Mexico. To establish the relationship a we will make use of the appropriate econometric tools and empirical strategy. The relevance of this question is given by the likelihood of productivity being affected as well. Even if having access to banking services does not affect school attendance, the question would still be relevant to policy making since it could be a dimension for the decision of the policy maker.
+The question we seek to answer is if the mass introduction in 2002 of a bank (Banco Azteca) which offered new financial services to communities in Mexico which previously had no access to these particular banking services, affected the attendance to school of students in those communities. The intention of the project is to establish the relationship between attendance to school by children under 15 years of age and access to a banking service in Mexico. To establish the relationship a we will make use of the appropriate econometric tools and empirical strategy. The relevance of this question is given by the likelihood of productivity being affected as well. Even if having access to banking services does not affect school attendance, the question would still be relevant to policy making since it could be a dimension for the decision of the policy maker.
+
+\section{Data}
+
+Our empirical strategy will be a difference in differences regression analysis for which we need panel data containing characteristics of mexican families in 2002, previous to the launch of Banco Azteca, and in 2005 after the launch of Banco Azteca; we will further need data detailing the municipalities where Banco Azteca opened branches. For this purpose, We will use two sources for our data. The first is the ENNVIH panel data which contains several characteristics of mexican families and is publicly available in the Mexican Family Life Survey website \footnote{http://www.ennvih-mxfls.org/english/ennvih-1.html}. The second dataset which contains the list of bank branches in different municipalities in Mexico at different points in time, including Banco Azteca, and is publicly available from the Comision Nacional Bancaria y de Valores (CBNV) website \footnote{http://portafoliodeinformacion.cnbv.gob.mx/bm1/Paginas/infhistoriaoperativa.aspx}.		
+				
+The data gathered from the Mexican Family Life Survey (MXFLS) website details several aspects of a Mexican Family displayed throughout different categorized books. Among these details of mexican families, several variables related to school attendance can be found. The Mexican Family Life Survey consists of several books of panel data which are divided into two major categories: household characteristics and individual characteristics. These categories are consequently subdivided into several books detailing different aspects, for example, control, economy, consumption, reproductive health among others. Within these particular books, there are different questionnaires fitting into each category. 
+			
+Since Banco Azteca started operations on several locations on December 2002, the basis for choosing the year of the dataset has to consider that a period before that is needed. The next dataset will be for the year 2005-2006 and the reason 2005- 2006 is chosen is because it is the next immediate dataset available. If datasets from later years were chosen, more things would likely need to be controlled for because other policies could have come into play.
+
 
 \section{Potential Issues}
 
 The data from the Mexican Family Life Survey is in .dta form, however this should not pose a significant problem to the overall project; some data tidying and arranging will have to be done but the information is easily accesible. On the other hand, data from the Comision Nacional Bancaria y de Valores is in .xls form and requires some editing and cleansing to tidy the data set. This should not pose a significant problem either since the data is easily accessible as well. 
 
+\newpage
+
+\section{References}
+
+\begin{itemize}
+  \itemsep0em
+    \item Aportela, Fernando, \textit{Effects of Financial Access on Savings by Low-Income People}, Mimeo, MIT, 1998.
+    \item Ashenfelter, Orley and Cecilia Rouse, \textit{Income, Schooling, and Ability: Evidence from a New Sample of Identical Twins}, Quarterly Journal of Economics, Vol. 113, p. 253-284, 1997.
+    \item Becker, Gary, \textit{Human Capital}, 2nd ed., Columbia University Press, New York, NY, 1975.
+\end{itemize}
