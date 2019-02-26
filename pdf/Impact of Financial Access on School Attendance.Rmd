@@ -10,6 +10,12 @@ documentclass: article
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+```{r, echo=false}
+require("haven")
+library("here")
+require("tidyverse")
+```
+
 \textbf{Members:}\
 \begin{itemize}
   \itemsep-.6em
@@ -37,7 +43,7 @@ Since Banco Azteca started operations on several locations on December 2002, the
 
 \section{Potential Issues}
 
-The data from the Mexican Family Life Survey is in .dta form, however this should not pose a significant problem to the overall project; some data tidying and arranging will have to be done but the information is easily accesible. On the other hand, data from the Comision Nacional Bancaria y de Valores is in .xls form and requires some editing and cleansing to tidy the data set. This should not pose a significant problem either since the data is easily accessible as well and once the datasets have been properly arranged, analysis should be relatively easy to perform.
+The data from the Mexican Family Life Survey is in .dta form, however this should not pose a significant problem to the overall project; some data tidying and arranging will have to be done but the information is easily accesible. On the other hand, data from the Comision Nacional Bancaria y de Valores is in .xls form and requires some editing and cleansing to tidy the data set. This should not pose a significant problem either since the data is easily accessible as well and once the datasets have been properly arranged, analysis should be relatively easy to perform..
 
 \newpage
 
@@ -49,3 +55,13 @@ The data from the Mexican Family Life Survey is in .dta form, however this shoul
     \item Ashenfelter, Orley and Cecilia Rouse, \textit{Income, Schooling, and Ability: Evidence from a New Sample of Identical Twins}, Quarterly Journal of Economics, Vol. 113, p. 253-284, 1997.
     \item Becker, Gary, \textit{Human Capital}, 2nd ed., Columbia University Press, New York, NY, 1975.
 \end{itemize}
+
+```{r, echo=FALSE}
+control_book <- read_dta(here("Data","hh02dta_bc","c_conpor.dta"))
+dwell_char <- read_dta(here("Data","hh02dta_bc","c_cv.dta"))
+family_plan_health <- read_dta(here("Data","hh02dta_bc","c_sp.dta"))
+schooling <- read_dta(here("Data","hh02dta_bc","c_eh.dta"))
+d_obs_char <- read_dta(here("Data","hh02dta_bc","c_cvo.dta"))
+indiv_control_vars <- read_dta(here("Data","hh02dta_bc","c_ls.dta"))
+```
+
