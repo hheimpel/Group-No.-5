@@ -10,7 +10,7 @@ documentclass: article
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-```{r, echo=false}
+```{r, echo=FALSE}
 require("haven")
 library("here")
 require("tidyverse")
