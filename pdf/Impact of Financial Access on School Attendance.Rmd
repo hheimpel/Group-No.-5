@@ -14,6 +14,7 @@ knitr::opts_chunk$set(echo = TRUE)
 require("haven")
 library("here")
 require("tidyverse")
+require("readxl")
 ```
 
 \textbf{Members:}\
@@ -57,11 +58,82 @@ The data from the Mexican Family Life Survey is in .dta form, however this shoul
 \end{itemize}
 
 ```{r, echo=FALSE}
-control_book <- read_dta(here("Data","hh02dta_bc","c_conpor.dta"))
+#2002 Household data
+control_book <- read_dta(here("Data","hh02dta_bc","c_portad.dta"))
 dwell_char <- read_dta(here("Data","hh02dta_bc","c_cv.dta"))
 family_plan_health <- read_dta(here("Data","hh02dta_bc","c_sp.dta"))
 schooling <- read_dta(here("Data","hh02dta_bc","c_eh.dta"))
 d_obs_char <- read_dta(here("Data","hh02dta_bc","c_cvo.dta"))
 indiv_control_vars <- read_dta(here("Data","hh02dta_bc","c_ls.dta"))
 ```
+```{r, echo=FALSE}
+#2005 Children under 15 data
+ch_education <- read_dta(here("Data","hh02dta_b5","v_edna.dta"))
+ch_education2 <- read_dta(here("Data","hh02dta_b5","v_ednb.dta"))
+ch_employment <- read_dta(here("Data","hh02dta_b5","v_emn.dta"))
+ch_t_alloc <- read_dta(here("Data","hh02dta_b5","v_atn.dta"))
+ch_outp_ut <- read_dta(here("Data","hh02dta_b5","v_cen.dta"))
+ch_health <- read_dta(here("Data","hh02dta_b5","v_esn.dta"))
+ch_inp_ut <- read_dta(here("Data","hh02dta_b5","v_hsn.dta"))
+child_vacc <- read_dta(here("Data","hh02dta_b5","v_vac.dta"))
+```
+```{r, echo=FALSE}
+#Sucursales Azteca
+azteca_2002 <- read_xls(here("Data","BM_Operativa_200212.xls"))
+```
+```{r, echo=FALSE}
+#Preparing and cleaning azteca 2002 data
+azteca_2002 <- select(azteca_2002,c(1:3,5:36))
+aux <- c()
+  for (i in 1:35) {
+    aux[i] = azteca_2002[1,i]
+  }
+aux[[1]] <- "edo_str"
+aux[[2]] <- "mpio"
+aux[[3]] <- "Municipios"
+colnames(azteca_2002) <- aux
+```
+```{r}
+#Dropping observations with missing location
+azteca_2002 <- azteca_2002 %>%
+  filter(., !is.na(mpio))
+
+#Filling State missing values
+for (i in 1:783) {
+  if (is.na(azteca_2002[i,"edo_str"])) {
+    azteca_2002[i,"edo_str"]=azteca_2002[i-1,"edo_str"]
+    }else{
+      i
+  }
+}
+
+azteca_2002 <- filter(azteca_2002, edo_str!="Estado")
+```
+```{r, echo=FALSE}
+#Creating States Data Frame with number identification
+by_edo_azt02 <- group_by(azteca_2002,edo_str)
+by_edo_azt02 <- summarise(by_edo_azt02, sum=mean(BANAMEX, na.rm=TRUE)) %>%
+  select(.,"edo_str") %>%
+  mutate(.,edo=1)
+
+for (i in 1:32) {
+  by_edo_azt02[i,2] <- i
+}
+
+#Merging states number identification with azteca_2002
+azteca_2002 <- left_join(azteca_2002,by_edo_azt02,by="edo_str")
+```
+```{r, echo=FALSE}
+azteca_var_names <- names(azteca_2002)
+for (x in azteca_var_names) {
+  azteca_2002 <- azteca_2002 %>% mutate(x=as.numeric(x))
+}
+```
+```{r}
+var_names <- names(df)
+for (x in var_names) {
+  df <- mutate(df, x=as.numeric(x))
+}
+```
+
 
