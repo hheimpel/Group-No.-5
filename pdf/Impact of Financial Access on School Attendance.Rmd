@@ -130,9 +130,10 @@ for (x in azteca_var_names) {
 }
 ```
 ```{r}
+df <- tibble(BANORTE="1", BANREGIO="2")
 var_names <- names(df)
 for (x in var_names) {
-  df <- mutate(df, x=as.numeric(x))
+  df <- df %>% mutate_(.dots=setNames(paste0("as.double(",x,")"), x))
 }
 ```
 
