@@ -1,17 +1,18 @@
 ---
-title: "Impact of Financial Access on School Attendance"
+title: "School Attendance in Mexico"
 author: "Group No. 5"
 date: "March 11, 2019"
 output: pdf_document
 fontsize: 12pt
 documentclass: article
+number_sections: true
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-\textbf{Members:}\
+\textbf{Members:}
 \begin{itemize}
   \itemsep-.6em
   \item Hector Hernandez Heimpel (NetID: hh744) - email: hh744@georgetown.edu\
@@ -22,36 +23,24 @@ knitr::opts_chunk$set(echo = TRUE)
 
 \section{Problem Statement}
 
-We will undertake two different but related questions in this project. First, we will make use of machine learning techniques to try to establish which covariates predict school attendance for children under 15 years of age in Mexico. For this particular question, we are not interested in finding the "true" value of the coefficients in the regression model, we are therefore not concerned with the presence of bias in the estimators. We will make use of the Mean Squared Prediction Error (MSPE) to assess the goodness of fit of the model. A good model could be useful to policy decision makers because in the abscence of information regarding school attendance, other variables could be used to try an predict school attendance.
+We will undertake two different but related questions in this project. First, we will make use of machine learning techniques to try to establish which covariates predict school attendance for children under 15 years of age in Mexico. A good model could be useful to policy decision makers because in the abscence of information regarding school attendance, other variables could be used to try an predict school attendance. The second question we are interested in is establishing the effect of access to low-income financial services on school attendance. For this, we will make use of an event which happened in Mexico in 2002 where a bank called Banco Azteca opened up a plethora of bank branches throughout Mexico. The services Banco Azteca provides include low-income financial services (which were the first of it's kind in Mexico) and we assume that proximity to Banco Azteca branches is equivalent to having access to these services. The effect of access to these services could be important to policy decision makers because a proper subsidy or tax incentive could be given to banks which offer these services in communities with low attendance to school.
 
-The second question we are interested in is establishing the effect of access to low-income financial services on school attendance. For this, we will make use of an event which happened in Mexico in 2002 where a bank called Banco Azteca opened up a plethora of bank branches throughout Mexico. The services Banco Azteca provides include low-income financial services (which were the first of it's kind in Mexico) and we assume that proximity to Banco Azteca branches is equivalent to having access to these services. For this question the "true" value of the coefficients is very important and we will try to minimize bias in these. The effect of access to these services could be important to policy decision makers because a proper subsidy or tax incentive could be given to banks which offer these services in communities with low attendance to school.
-
-For both of these questions it is important to state that the outcome variable has not yet been chosen. Our data sets contain variables related to school attendance such as hours spent doing school work, days missed from school in the school year, whether the child is actively subscribed to school in that year, amongst others. We will run different models for both questions and assess which outcome variable provides the best outcomes in terms of goodness of fit for question 1 and statistical significance and non-bias for question 2. 
 
 \section{Data Analysis and Manipulation}
 
-\subsection{Prediction of School Attendance}
+There are multiple data sets which will comprise the source of our analysis for the prediction problem (Question 1). The first group of data sets is contained in the Control Book for 2002 in the Mexican Family Life Survey (ENNVIH). The data sets contained within this book contain household level characteristics and they are divided into two categories. The first category contains characteristics observed in the household by the interviewer (i.e. proximity to water source, type of floor, etc.) and the second category contains answers to individual level survey questions (i.e. marital status, maximum education grade, etc.). The second group of data sets are contained in Book V for 2002 in the Mexican Family Life Survey. These group of datasets contain information about characteristics of children under 15 years of age, they include but are not limited to, child employment, child health characteristics and more. The third group of data sets is contained in the Bank Operational Information from the Comision Nacional Bancaria y de Valores (CNBV). This data set contains information about the locations of bank branches in 2002 for Mexico (including Banco Azteca). 
 
-There are multiple data sets which will comprise the source of our analysis for the prediction problem (Question 1). The first group of data sets is contained in the Control Book for 2002 in the Mexican Family Life Survey (ENNVIH). The data sets contained within this book contain household level characteristics and they are divided into two categories. The first category contains characteristics observed in the household by the interviewer (i.e. proximity to water source, type of floor, etc.) and the second category contains answers to individual level survey questions (i.e. marital status, maximum education grade, etc.). 
-
-The second group of data sets are contained in Book V for 2002 in the Mexican Family Life Survey. These group of datasets contain information about characteristics of children under 15 years of age, they include but are not limited to, child employment, child health characteristics and more. The third group of data sets is contained in the Bank Operational Information from the Comision Nacional Bancaria y de Valores (CNBV). This data set contains information about the locations of bank branches in 2002 for Mexico (including Banco Azteca). 
-
-The data sets previously described contain a lot of problems which means we are going to have to make use of several tools to prepare them for analysis; for example, missing data seems to be a substantial problem in our data sets, we have to be careful in dealing with missing values because they might represent different things in different data sets. In addition to R's `base` package, we will have manipulate the data extensively with the `tidyverse` and the `recipes` package in order to prepare it for analysis and the machine learning process. The data sets also contain problems with strings, in order to be able to merge or append the different data sets we will have to manipulate the strings. 
-
-Furthermore, plenty of exploratory analysis will also be required to check for systematic patterns of missing data, outliers, variance and covariance amongst different variables. Our main tool for this purpose will be the package `ggplot2` which will provide graphics to easily and rapidly identify problems and/or patterns in the data.
-
-\subsection{Effect of Access to Financial Services}
-
-In order to estimate the effect of access to low-income financial services we will make use of all the previous data sets plus the same group of data sets but for year 2005. The reason for this is that we will make use of a Difference in Differences strategy with municipalities with no Banco Azteca branches as our control group and municipalities with Banco Azteca as our treatment group. 
+The data sets previously described contain a lot of problems which means we are going to have to make use of several tools to prepare them for analysis; for example, missing data seems to be a substantial problem in our data sets, we have to be careful in dealing with missing values because they might represent different things in different data sets. In addition to R's `base` package, we will have manipulate the data extensively with the `tidyverse` and the `recipes` package in order to prepare it for analysis and the machine learning process. The data sets also contain problems with strings, in order to be able to merge or append the different data sets we will have to manipulate the strings. Furthermore, plenty of exploratory analysis will also be required to check for systematic patterns of missing data, outliers, variance and covariance amongst different variables. Our main tool for this purpose will be the package `ggplot2` which will provide graphics to easily and rapidly identify problems and/or patterns in the data. In order to estimate the effect of access to low-income financial services we will make use of all the previous data sets plus the same group of data sets but for year 2005. 
 
 \section{Testable Hypothesis}
 
-Using machine learning techniques we will try to find the best model for prediction of school attendance using the previous data sets. Our goodness of fit measure will be the MSPE and the we will choose the model which produces the lowest one.
+Using machine learning techniques we will try to find the best model for prediction of school attendance using the previously described data sets. Our goodness of fit measure will be the Mean Squared Predition Error (MSPE) and we will choose the model which produces the lowest one. To estimate the impact of low-income financial services on school attendance we will mainly be interested in the coefficient in the difference in differences regression model which measures said impact. Our  main hypothesis in this case is that access to low-income financial services will increase school attendance; in our Difference in Differences strategy municipalities with no Banco Azteca branches will be our control group and municipalities with Banco Azteca will be our treatment group.
 
-To estimate the impact of low-income financial services on school attendance we will mainly be interested in the coefficient in the difference in differences regression model which measures said impact. Our  main hypothesis in this case is that access to low-income financial services will increase school attendance. 
+For both of these questions it is important to state that the outcome variable has not yet been chosen. Our data sets contain variables related to school attendance such as hours spent doing school work, days missed from school in the school year, whether the child is actively subscribed to school in that year, amongst others. We will run different models for both questions and assess which outcome variable provides the best outcomes in terms of goodness of fit for question 1 and statistical significance and non-bias for question 2. 
 
 \section{Main Products}
 
+The main output from our analysis will be for research Question 1 the table containing the model, its coefficients and corresponding MSPE. We will use `ggplot2` to include any graphs which might have helped us identify problems with the data, important or interesting correlations and so forth. The main output for Question 2 will be the values of the coefficients for the covariates in the models, their statistical significance and other important statistics. We will also use `ggplot2` graphics that help us identify the most important systematic patterns in the data. 
 
 \newpage
 
