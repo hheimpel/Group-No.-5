@@ -80,6 +80,25 @@ child_vacc <- read_dta(here("Data","hh02dta_b5","v_vac.dta"))
 ```{r, echo=FALSE}
 #Sucursales Azteca
 azteca_2002 <- read_xls(here("Data","BM_Operativa_200212.xls"))
+
+#Municipalities names and codes
+mpios <- read_xlsx(here("Data","Relacion_de_municipios_de_Mexico.xlsx"))
+
+#Removing accents (so we can merge)
+colnames(mpios) <- c("mpio","mpio_str")
+mpios$mpio_str <- iconv(mpios$mpio_str, from = 'UTF-8', to = 'ASCII//TRANSLIT')
+
+#Adding edo_str column
+mpios <- mpios %>%
+  rbind(c(NA,"AGUASCALIENTES"),.) %>%
+  mutate(.,edo_str=NA)
+for (i in 1:nrow(mpios)) {
+  if (is.na(mpios$mpio[i])) {
+    mpios$edo_str[i]=mpios$mpio_str[i]
+  }else{
+    mpios$edo_str[i]=mpios$edo_str[i-1]
+  }
+}
 ```
 ```{r, echo=FALSE}
 #Preparing and cleaning azteca 2002 data
@@ -89,14 +108,14 @@ aux <- c()
     aux[i] = azteca_2002[1,i]
   }
 aux[[1]] <- "edo_str"
-aux[[2]] <- "mpio"
-aux[[3]] <- "Municipios"
+aux[[2]] <- "munic_cnbv_code"
+aux[[3]] <- "mpio_str"
 colnames(azteca_2002) <- aux
 ```
-```{r}
+```{r, echo=FALSE}
 #Dropping observations with missing location
 azteca_2002 <- azteca_2002 %>%
-  filter(., !is.na(mpio))
+  filter(., !is.na(munic_cnbv_code))
 
 #Filling State missing values
 for (i in 1:783) {
@@ -110,31 +129,68 @@ for (i in 1:783) {
 azteca_2002 <- filter(azteca_2002, edo_str!="Estado")
 ```
 ```{r, echo=FALSE}
-#Creating States Data Frame with number identification
+#Creating States Data Frame with number identification (per codebook instructions)
 by_edo_azt02 <- group_by(azteca_2002,edo_str)
 by_edo_azt02 <- summarise(by_edo_azt02, sum=mean(BANAMEX, na.rm=TRUE)) %>%
   select(.,"edo_str") %>%
-  mutate(.,edo=1)
+  mutate(.,edo=NA)
+by_edo_azt02[3,2]=3
+by_edo_azt02[7,2]=5
+by_edo_azt02[9,2]=9
+by_edo_azt02[10,2]=10
+by_edo_azt02[11,2]=11
+by_edo_azt02[14,2]=14
+by_edo_azt02[15,2]=15
+by_edo_azt02[16,2]=16
+by_edo_azt02[17,2]=17
+by_edo_azt02[18,2]=19
+by_edo_azt02[19,2]=20
+by_edo_azt02[20,2]=21
+by_edo_azt02[24,2]=25
+by_edo_azt02[25,2]=26
+by_edo_azt02[30,2]=30
+by_edo_azt02[31,2]=31
 
-for (i in 1:32) {
-  by_edo_azt02[i,2] <- i
-}
 
 #Merging states number identification with azteca_2002
 azteca_2002 <- left_join(azteca_2002,by_edo_azt02,by="edo_str")
+
+#Merging Municipalities
+by_edo_azt02CAPS <- by_edo_azt02
+by_edo_azt02CAPS <- mutate(by_edo_azt02CAPS,edo_str=toupper(edo_str))
+by_edo_azt02CAPS$edo_str <- iconv(by_edo_azt02CAPS$edo_str, from = 'UTF-8', to = 'ASCII//TRANSLIT')
+by_edo_azt02CAPS[9,1]="CIUDAD DE MEXICO"
+by_edo_azt02CAPS[7,1]="COAHULIA"
+by_edo_azt02CAPS[15,1]="ESTADO DE MEXICO"
+mpios <- mpios %>% 
+  left_join(.,by_edo_azt02CAPS,by="edo_str") %>%
+  select(.,mpio,mpio_str,edo)
+azteca_2002 <- inner_join(azteca_2002,mpios,by=c("mpio_str","edo"))
+azteca_2002 <- filter(azteca_2002,edo!=is.na(edo), mpio!=is.na(mpio))
 ```
 ```{r, echo=FALSE}
-azteca_var_names <- names(azteca_2002)
-for (x in azteca_var_names) {
-  azteca_2002 <- azteca_2002 %>% mutate(x=as.numeric(x))
+#Renaming variables
+colnames(azteca_2002) <- c("edo_str","mpio","municipios","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland","edo")
+
+azteca_2002 <- select(azteca_2002, "edo_str","edo","mpio","municipios","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
+
+#Dropping if missing state (since they won't be in ENNVIH data sets)
+azteca_2002 <- filter(azteca_2002, edo!=is.na(edo))
+```
+```{r,echo=FALSE}
+#Changing digit strings to numeric
+azt_numvar_names <- c("edo","mpio","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
+for (x in azt_numvar_names) {
+  azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("as.double(",x,")"), x))
 }
 ```
-```{r}
-df <- tibble(BANORTE="1", BANREGIO="2")
-var_names <- names(df)
-for (x in var_names) {
-  df <- df %>% mutate_(.dots=setNames(paste0("as.double(",x,")"), x))
+```{r, echo=FALSE}
+#replacing missing values with zero
+for (x in azt_numvar_names) {
+  azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("ifelse(is.na(",x,"),0,",x,")"),x))
 }
 ```
+
+
 
 
