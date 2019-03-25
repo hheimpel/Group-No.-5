@@ -11,10 +11,13 @@ documentclass: article
 knitr::opts_chunk$set(echo = TRUE)
 ```
 ```{r, echo=FALSE}
+require("recipes")
 require("haven")
 library("here")
 require("tidyverse")
 require("readxl")
+require("pdp")
+require("caret")
 ```
 
 \textbf{Members:}\
@@ -57,17 +60,116 @@ The data from the Mexican Family Life Survey is in .dta form, however this shoul
     \item Becker, Gary, \textit{Human Capital}, 2nd ed., Columbia University Press, New York, NY, 1975.
 \end{itemize}
 
+##Loading the Household Level Data for 2002
+
 ```{r, echo=FALSE}
 #2002 Household data
 control_book <- read_dta(here("Data","hh02dta_bc","c_portad.dta"))
 dwell_char <- read_dta(here("Data","hh02dta_bc","c_cv.dta"))
-family_plan_health <- read_dta(here("Data","hh02dta_bc","c_sp.dta"))
-schooling <- read_dta(here("Data","hh02dta_bc","c_eh.dta"))
 d_obs_char <- read_dta(here("Data","hh02dta_bc","c_cvo.dta"))
 indiv_control_vars <- read_dta(here("Data","hh02dta_bc","c_ls.dta"))
 ```
+###Removing non-informative variables in Household Level Data for 2002
+```{r}
+#Removing variables 
+#indiv_control_vars
+indiv_control_vars <- select(indiv_control_vars, -c(ls02_1, ls03_1, ls03_21, ls03_22, ls06, ls07, ls08, ls11, ls13_1, ls15_1, ls16, ls18))
+
+#control_book
+control_book <- select(control_book, -c(ls, rel, reh, control, edad))
+```
+
+###Recoding variables in Household Level Data for 2002
+```{r}
+#Recoding values for interpretation indiv_control_vars
+#Gender
+indiv_control_vars <- indiv_control_vars %>%
+  mutate(ls04 = ifelse(ls04==1,"male",ifelse(ls04==3,"female",ls04)))
+
+#Relationship to HH head
+rel_HH_head <- c("HH_head", "Spouse/couple", "Son/daughter", "Step_son/daughter", "Son/daughter_in_law", "Father/Mother", "Father/Mother_in_law", "Brother/sister", "Brother/sister_in_law", "Grandkid", "Grandpa_ma", "Uncle/aunt", "Nephew/niece", "Cousin", "Worker", "Other")
+
+for (i in 1:16) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls05_1 = ifelse(ls05_1==i,rel_HH_head[i],ls05_1))
+}
+
+rm(rel_HH_head)
+
+#Live in HH
+indiv_control_vars <- mutate(indiv_control_vars, ls09=ifelse(ls09==3,0,ls09))
+
+#Marital Status
+marital <- c("Concubinage", "Separated", "Divorced", "Widowed", "Married", "Single")
+
+
+for (j in 1:6) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls10 = ifelse(ls10==j,marital[j],ls10))
+}
+
+rm(marital)
+
+#Dummy work last 12 months
+indiv_control_vars <- indiv_control_vars %>%
+  mutate(ls12 = ifelse(ls12==3,0,ls12))
+```
+```{r}
+#Control Book
+control_book <- control_book %>%
+  mutate(estrato=ifelse(estrato==1,"urban",ifelse(is.na(estrato),estrato,"rural")))
+```
+```{r}
+#d_obs_char missing values
+d_obs_char_names <- names(d_obs_char)
+miss_tib <- tibble()
+for (x in d_obs_char_names) {
+  mis <- sum(is.na(d_obs_char[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(d_obs_char_names)
+miss_tib
+```
+```{r}
+#d_obs_char missing values
+dwell_names <- names(dwell_char)
+miss_tib <- tibble()
+for (x in dwell_names) {
+  mis <- sum(is.na(dwell_char[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(dwell_names)
+miss_tib
+```
+
+###Removing variables with many missing values
+
+We remove the variables which have over three thousand missing values in this data set. 
+
+```{r}
+#Removing variables with many missing values 
+#d_obs_char
+d_obs_char <- select(d_obs_char, -c(cvo03a, cvo03b, cvo03c, cvo03d, cvo03e, cvo03f))
+
+#dwell_char
+dwell_char <- select(dwell_char, c(folio, cv01_1, cv02_1, cv05, cv06, cv07, cv08_1, cv12, cv16))
+```
+###Merging Household level data
+
+```{r}
+master_household2002 <- left_join(control_book, d_obs_char, by = c("folio"))
+master_household2002 <- master_household2002 %>%
+  left_join(., dwell_char, by = c("folio"))
+```
+
 ```{r, echo=FALSE}
-#2005 Children under 15 data
+#2002 Children under 15 data
 ch_education <- read_dta(here("Data","hh02dta_b5","v_edna.dta"))
 ch_education2 <- read_dta(here("Data","hh02dta_b5","v_ednb.dta"))
 ch_employment <- read_dta(here("Data","hh02dta_b5","v_emn.dta"))
@@ -80,6 +182,8 @@ child_vacc <- read_dta(here("Data","hh02dta_b5","v_vac.dta"))
 ```{r, echo=FALSE}
 #Sucursales Azteca
 azteca_2002 <- read_xls(here("Data","BM_Operativa_200212.xls"))
+```
+
 
 #Municipalities names and codes
 mpios <- read_xlsx(here("Data","Relacion_de_municipios_de_Mexico.xlsx"))
@@ -170,9 +274,9 @@ azteca_2002 <- filter(azteca_2002,edo!=is.na(edo), mpio!=is.na(mpio))
 ```
 ```{r, echo=FALSE}
 #Renaming variables
-colnames(azteca_2002) <- c("edo_str","mpio","municipios","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland","edo")
+colnames(azteca_2002) <- c("edo_str","munic_cnbv_code","mpio_str","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland","edo","mpio")
 
-azteca_2002 <- select(azteca_2002, "edo_str","edo","mpio","municipios","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
+azteca_2002 <- select(azteca_2002, "edo_str","edo","mpio_str","mpio","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
 
 #Dropping if missing state (since they won't be in ENNVIH data sets)
 azteca_2002 <- filter(azteca_2002, edo!=is.na(edo))
