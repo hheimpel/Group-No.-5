@@ -65,9 +65,9 @@ The data from the Mexican Family Life Survey is in .dta form, however this shoul
 We start by loading the control book for 2002 (M X F L S - Book C). This book contains several control characteristics at an individual level and at a household level. Within the book there are four pertinent data sets to be used:
 
 1. `c_portad.dta`: contains the location of the households by State, Municipality and Locality. It further contains a variable indicating number of inhabitants in Locality. This is a Household level data set.
-2. ``c_cv.dta`: contains physical characteristics of the household (i.e. whether it has a cooking room, a telephone, etc.). This is a Household level data set.
-3. `c_cvo`: this data set extends the previous one with more physical characteristics of the households (i.e. the construcction materials, access to electricity, etc.). This is a household level data set.
-4. `c_ls`: it contains control characteristics such as income, level of education, gender, among others. This is an individual level data set.
+2. `c_cv.dta`: contains physical characteristics of the household (i.e. whether it has a cooking room, a telephone, etc.). This is a Household level data set.
+3. `c_cvo.dta`: this data set extends the previous one with more physical characteristics of the households (i.e. the construcction materials, access to electricity, etc.). This is a household level data set.
+4. `c_ls.dta`: it contains control characteristics such as income, level of education, gender, among others. This is an individual level data set.
 
 ```{r, echo=FALSE}
 #2002 Household data
@@ -426,7 +426,20 @@ for (x in dummies_ch) {
   child_master2002 <- mutate(child_master2002, !! x1 := ifelse(!! x1 == 3 | !!x1 == 2,0,!! x1))
 }
 ```
+```{r}
+child_master2002 <- filter(child_master2002, older_5==1) %>%
+  select(-c(older_5))
+rm(ch_education,ch_employment,ch_health,ch_inp_ut,ch_outp_ut,ch_t_alloc,miss_tib)
+```
+##Merging Book V and Book C master data sets
 
+To have the working master data set we merge both of the master data sets from book C and book V.
+
+```{r}
+master_2002 <- left_join(child_master2002,master_household2002, by = c("hhid", "individual_id"))
+rm(master_household2002,child_master2002)
+```
+##THE FOLLOWING IS NOT READY, WE HAVE TO SEE IF IT'S WORTH IT
 
 ```{r, echo=FALSE}
 #Sucursales Azteca
