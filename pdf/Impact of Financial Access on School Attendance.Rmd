@@ -8,9 +8,9 @@ documentclass: article
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE, include=FALSE)
 ```
-```{r, echo=FALSE}
+```{r, cache=TRUE}
 require("recipes")
 require("haven")
 library("here")
@@ -69,7 +69,7 @@ We start by loading the control book for 2002 (M X F L S - Book C). This book co
 3. `c_cvo.dta`: this data set extends the previous one with more physical characteristics of the households (i.e. the construcction materials, access to electricity, etc.). This is a household level data set.
 4. `c_ls.dta`: it contains control characteristics such as income, level of education, gender, among others. This is an individual level data set.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE}
 #2002 Household data
 control_book <- read_dta(here("Data","hh02dta_bc","c_portad.dta"))
 dwell_char <- read_dta(here("Data","hh02dta_bc","c_cv.dta"))
@@ -80,7 +80,7 @@ indiv_control_vars <- read_dta(here("Data","hh02dta_bc","c_ls.dta"))
 ###Removing non-informative variables in Book C
 Once the data sets were loaded we proceeded to eliminate several non-informative variables. Some of them were redundant variables such as more identification characteristics for the household members, other variables seemed to ask the same thing but with a slightly different wording. For more details please check the Codebook for book C annexed in the project files.
 
-```{r}
+```{r, cache=TRUE}
 #Removing variables 
 #indiv_control_vars
 indiv_control_vars <- select(indiv_control_vars, -c(secuencia, ls00, ls02_1, ls12, ls03_1, ls03_21, ls03_22, ls06, ls07, ls08, ls11, ls13_1, ls15_1, ls16, ls18))
@@ -91,7 +91,7 @@ control_book <- select(control_book, -c(ls, rel, reh, control, edad))
 ###Recoding variables in Household Level Data for 2002
 The next step consisted of recoding the values of certain variables to reflect the different categories as the codebook instructed. The codebook provided numeric values to categorical variables which could be slightly confusing, we therefore recoded the values to reflect in a string what they actually meant. Additionally, we recoded dummy variables to be equal to one if the condition was true and zero otherwise (they were previously coded as threes as opposed to zeros); lastly, we created a resumed categorical variable for the size of the locality, if population was bigger thatn 100 thousand we categorized as `urban` and `rural` otherwise.
 
-```{r}
+```{r, cache=TRUE}
 #Recoding values for interpretation indiv_control_vars
 #Gender
 indiv_control_vars <- indiv_control_vars %>%
@@ -121,14 +121,14 @@ for (j in 1:6)
 
 rm(marital)
 ```
-```{r}
+```{r, cache=TRUE}
 #Control Book
 control_book <- control_book %>%
   mutate(estrato=ifelse(estrato==1,"urban",ifelse(is.na(estrato),estrato,"rural")))
 ```
 ###Dropping variables with excessive missing values
 In many of the books many missing values for certain variables were observed. We created a data frame per data se to show us how many missing values each variable had and kept only the variables which didn't have an excessive amount of missing values. The first data set we noticed a missing values problem was `c_cv` as the following results show:
-```{r}
+```{r, cache=TRUE}
 #d_obs_char missing values
 d_obs_char_names <- names(d_obs_char)
 miss_tib <- tibble()
@@ -144,7 +144,7 @@ miss_tib
 ```
 The second data set where we applied the same logic was `c_cv`:
 
-```{r}
+```{r, cache=TRUE}
 #dwell_char missing values
 dwell_names <- names(dwell_char)
 miss_tib <- tibble()
@@ -161,7 +161,7 @@ miss_tib
 
 We remove the variables which have over forty percent of missing values in these data sets. 
 
-```{r}
+```{r, cache=TRUE}
 #Removing variables with many missing values 
 #d_obs_char
 d_obs_char <- select(d_obs_char, -c(cvo03a, cvo03b, cvo03c, cvo03d, cvo03e, cvo03f))
@@ -173,7 +173,7 @@ dwell_char <- select(dwell_char, c(folio, cv01_1, cv02_1, cv05, cv06, cv07, cv08
 ###Merging Household level data, recoding and transforming book C data
 Once we kept the variables with no issues in all the data sets previously mentioned we merged the data sets into a master data set. It's important to mention that the merging was done by the variable `folio` which is the individual household id; by doing so, there were several household level characteristics which were attributed to an individual level. Observations of the households contruction materials for example will be the same for each individual member of the household. Finally, some recoding was done to as before to reflect the true categoreis of a variable with strings and dummies were appropriately transformed.
 
-```{r}
+```{r, cache=TRUE}
 #Merging
 master_household2002 <- left_join(control_book, d_obs_char, by = c("folio"))
 master_household2002 <- master_household2002 %>%
@@ -254,7 +254,7 @@ master_household2002 <- master_household2002 %>%
 ```
 It is worth mentioning the transformation of three individual level variables to household level variables. The first variable measured the highest education grade the household member had attended; since the focus will be children between 6 and 15 years of age we transformed the variable to show the average \textbf{adult} household member education. It seems likely that children whose accompanying adult household memberhave a higher education level will be more likely to have more education.
 
-```{r}
+```{r, cache=TRUE}
 #creating average household adult (older than 15) member education
 hh_avg_educ <- tibble(hh_avg_ed = NA)
 aux <- master_household2002 %>%
@@ -273,7 +273,7 @@ master_household2002 <- select(master_household2002,-c("education_level"))
 rm(aux)
 ```
 The second variable we transformed was income. Since income only reflected the individual level of income and since many children do not have income themselves we transformed the variable to show the average income per household. Intuitively, if the aggregated or average income per household is bigger then perhaps children have more opportunities to attend school. It would have seemed naive to impute missing values of income for children with things other than a household level transformation of the individual level variable income.
-```{r}
+```{r, cache=TRUE}
 #Household combined Income
 master_household2002_1 <- master_household2002 %>%
   group_by(hhid) %>%
@@ -285,7 +285,7 @@ master_household2002 <- master_household2002 %>%
 rm(master_household2002_1)
 ```
 The third variable we transformed was relationship status. Since it is safe to assume that most children under 15 are single we decided to create a household level variable which reflected the relationship status of the household head. The intuition behind this is that perhaps there is some correlation between having married figures as parents or household heads.
-```{r}
+```{r, cache=TRUE}
 master_household2002_1 <- master_household2002 %>%
   filter(hh_status == "HH_head") %>%
   select(hhid, marital_status) %>%
@@ -294,7 +294,7 @@ master_household2002_1 <- master_household2002 %>%
 master_household2002 <- select(master_household2002_1, -c("marital_status.x"))
 ```
 Once we created all the household level transformations to the mentioned variables, we filtered the data to only include children older than 5 and younger than 15.
-```{r}
+```{r, cache=TRUE}
 master_household2002 <- filter(master_household2002, age>5, age<15)
 rm(control_book,d_obs_char,dwell_char, hh_avg_educ,indiv_control_vars,master_household2002_1,miss_tib)
 ```
@@ -309,7 +309,7 @@ We then proceeded to load individual level data for children by loading the book
 5. `v_esn.dta`: contains information regarding overall children's health.
 6. `v_hsn.dta`: contains information regarding inpatient utilization for children.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE}
 #2002 Children under 15 data
 ch_education <- read_dta(here("Data","hh02dta_b5","v_edna.dta"))
 ch_employment <- read_dta(here("Data","hh02dta_b5","v_emn.dta"))
@@ -322,7 +322,7 @@ ch_inp_ut <- read_dta(here("Data","hh02dta_b5","v_hsn.dta"))
 
 ###Exploring missing values
 These data sets contained many varibles with excessive amounts of missing values. Once again we went through all data sets to identify variables which had excesssive amounts of missing values.
-```{r}
+```{r, cache=TRUE}
 #Missing values ch_education
 ched_names <- names(ch_education)
 miss_tib <- tibble()
@@ -337,7 +337,7 @@ rm(ched_names)
 miss_tib
 ```
 
-```{r}
+```{r, cache=TRUE}
 #Missing values ch_employment
 ched_names <- names(ch_employment)
 miss_tib <- tibble()
@@ -351,7 +351,7 @@ for (x in ched_names) {
 rm(ched_names)
 miss_tib
 ```
-```{r}
+```{r, cache=TRUE}
 #Missing values ch_health
 ched_names <- names(ch_health)
 miss_tib <- tibble()
@@ -365,7 +365,7 @@ for (x in ched_names) {
 rm(ched_names)
 miss_tib
 ```
-```{r}
+```{r, cache=TRUE}
 #Missing values ch_t_alloc
 ched_names <- names(ch_t_alloc)
 miss_tib <- tibble()
@@ -382,7 +382,7 @@ miss_tib
 
 ###Recoding and merging to prepare master data set for children
 Once we identified the variables with many missing values we then proceeded to discard redundant variables and to merge all of the data sets into a master data set. Categorical variables were also transformed to show the actual string category they represent as opposed to numeric value.
-```{r}
+```{r, cache=TRUE}
 #Removing redundant variables or with many missing values and renaming them
 ch_education <- ch_education %>%
   select(folio,ls,edn01,edn01a,edn02,edn03)
@@ -418,7 +418,7 @@ child_master2002 <- child_master2002 %>%
 ```
 ###Recoding dummies
 The last step consisted of recoding dummy variables to have a value of one if condition was true and zero otherwise.
-```{r}
+```{r, cache=TRUE}
 dummies_ch <- names(child_master2002)
 dummies_ch <- dummies_ch[c(3:9, 11:22)]
 for (x in dummies_ch) {
@@ -426,7 +426,7 @@ for (x in dummies_ch) {
   child_master2002 <- mutate(child_master2002, !! x1 := ifelse(!! x1 == 3 | !!x1 == 2,0,!! x1))
 }
 ```
-```{r}
+```{r, cache=TRUE}
 child_master2002 <- filter(child_master2002, older_5==1) %>%
   select(-c(older_5))
 rm(ch_education,ch_employment,ch_health,ch_inp_ut,ch_outp_ut,ch_t_alloc,miss_tib)
@@ -435,18 +435,18 @@ rm(ch_education,ch_employment,ch_health,ch_inp_ut,ch_outp_ut,ch_t_alloc,miss_tib
 
 To have the working master data set we merge both of the master data sets from book C and book V.
 
-```{r}
+```{r, cache=TRUE}
 master_2002 <- left_join(child_master2002,master_household2002, by = c("hhid", "individual_id"))
 rm(master_household2002,child_master2002)
 ```
 ##THE FOLLOWING IS NOT READY, WE HAVE TO SEE IF IT'S WORTH IT
 
-```{r, echo=FALSE}
+```{r, echo=FALSE, cache=TRUE}
 #Sucursales Azteca
 azteca_2002 <- read_xls(here("Data","BM_Operativa_200212.xls"))
 ```
 
-
+```{r, cache=TRUE}
 #Municipalities names and codes
 mpios <- read_xlsx(here("Data","Relacion_de_municipios_de_Mexico.xlsx"))
 
@@ -466,7 +466,7 @@ for (i in 1:nrow(mpios)) {
   }
 }
 ```
-```{r, echo=FALSE}
+```{r, cache=TRUE}
 #Preparing and cleaning azteca 2002 data
 azteca_2002 <- select(azteca_2002,c(1:3,5:36))
 aux <- c()
@@ -478,7 +478,7 @@ aux[[2]] <- "munic_cnbv_code"
 aux[[3]] <- "mpio_str"
 colnames(azteca_2002) <- aux
 ```
-```{r, echo=FALSE}
+```{r, cache=TRUE}
 #Dropping observations with missing location
 azteca_2002 <- azteca_2002 %>%
   filter(., !is.na(munic_cnbv_code))
@@ -494,7 +494,7 @@ for (i in 1:783) {
 
 azteca_2002 <- filter(azteca_2002, edo_str!="Estado")
 ```
-```{r, echo=FALSE}
+```{r, cache=TRUE}
 #Creating States Data Frame with number identification (per codebook instructions)
 by_edo_azt02 <- group_by(azteca_2002,edo_str)
 by_edo_azt02 <- summarise(by_edo_azt02, sum=mean(BANAMEX, na.rm=TRUE)) %>%
@@ -534,7 +534,7 @@ mpios <- mpios %>%
 azteca_2002 <- inner_join(azteca_2002,mpios,by=c("mpio_str","edo"))
 azteca_2002 <- filter(azteca_2002,edo!=is.na(edo), mpio!=is.na(mpio))
 ```
-```{r, echo=FALSE}
+```{r, cache=TRUE}
 #Renaming variables
 colnames(azteca_2002) <- c("edo_str","munic_cnbv_code","mpio_str","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland","edo","mpio")
 
@@ -543,14 +543,14 @@ azteca_2002 <- select(azteca_2002, "edo_str","edo","mpio_str","mpio","amex","ban
 #Dropping if missing state (since they won't be in ENNVIH data sets)
 azteca_2002 <- filter(azteca_2002, edo!=is.na(edo))
 ```
-```{r,echo=FALSE}
+```{r, cache=TRUE}
 #Changing digit strings to numeric
 azt_numvar_names <- c("edo","mpio","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
 for (x in azt_numvar_names) {
   azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("as.double(",x,")"), x))
 }
 ```
-```{r, echo=FALSE}
+```{r, cache=TRUE}
 #replacing missing values with zero
 for (x in azt_numvar_names) {
   azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("ifelse(is.na(",x,"),0,",x,")"),x))
