@@ -436,9 +436,278 @@ rm(ch_education,ch_employment,ch_health,ch_inp_ut,ch_outp_ut,ch_t_alloc,miss_tib
 To have the working master data set we merge both of the master data sets from book C and book V.
 
 ```{r, cache=TRUE}
-master_2002 <- left_join(child_master2002,master_household2002, by = c("hhid", "individual_id"))
+master_2002 <- left_join(child_master2002,master_household2002, by = c("hhid", "individual_id")) %>%
+  select(-c(live_in_hh))
 rm(master_household2002,child_master2002)
 ```
+And finally, we impute household level missing variables (missing observations at a household level will be substituted for whichever value or characteristic other members of the household have).
+
+```{r, cache=TRUE}
+Mode <- function(x) {
+  ux <- unique(x) 
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+aux <- c("state", "municipality", "community", "urban", "id_loc", "type_hh", "electricity", "material_floor", "material_wall", "material_roof", "telephone", "property_status", "cook_room", "sleep_kitchen", "rooms_sleep", "source_water","same_drink_wash_water", "toilet", "hh_avg_ed",  "hh_income", "marital_status.y")
+
+master_2002 <- group_by(master_2002, by = hhid)
+
+for (x in aux) {
+x1 <- as.name(x)
+  master_2002 <- mutate(master_2002, !! x1 := ifelse(is.na(!! x1), Mode(!! x1), !! x1)) 
+}
+
+master_2002 <- ungroup(master_2002) %>%
+  select(-c(by))
+rm(aux)
+```
+
+#CREATING DATA SET FOR 2005
+
+```{r, echo=FALSE, cache=TRUE}
+#2005 Household data
+control_book <- read_dta(here("Data","hh05dta_bc","c_portad.dta"))
+dwell_char <- read_dta(here("Data","hh05dta_bc","c_cv.dta"))
+d_obs_char <- read_dta(here("Data","hh05dta_bc","c_cvo.dta"))
+indiv_control_vars <- read_dta(here("Data","hh05dta_bc","c_ls.dta"))
+
+#Removing variables 
+#indiv_control_vars
+indiv_control_vars <- select(indiv_control_vars, c(folio, ls, ls02_2, ls04, ls05_1, ls10, ls13_2, ls14))
+
+#control_book
+control_book <- select(control_book, -c(ls, catorcena, rel, reh, control, edad))
+
+#Recoding values for interpretation indiv_control_vars
+#Gender
+indiv_control_vars <- indiv_control_vars %>%
+  mutate(ls04 = ifelse(ls04==1,"male",ifelse(ls04==3,"female",ls04)))
+
+#Relationship to HH head
+rel_HH_head <- c("HH_head", "Spouse/couple", "Son/daughter", "Step_son/daughter", "Son/daughter_in_law", "Father/Mother", "Father/Mother_in_law", "Brother/sister", "Brother/sister_in_law", "Grandkid", "Grandpa_ma", "Uncle/aunt", "Nephew/niece", "Cousin", "Worker", "Other")
+
+for (i in 1:16) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls05_1 = ifelse(ls05_1==i,rel_HH_head[i],ls05_1))
+}
+
+rm(rel_HH_head)
+
+#Marital Status
+marital <- c("Concubinage", "Separated", "Divorced", "Widowed", "Married", "Single")
+
+
+for (j in 1:6) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls10 = ifelse(ls10==j,marital[j],ls10))
+}
+
+rm(marital)
+
+#Control Book
+control_book <- control_book %>%
+  mutate(estrato=ifelse(estrato==1,"urban",ifelse(is.na(estrato),estrato,"rural")))
+
+#Removing variables with many missing values 
+#d_obs_char
+d_obs_char <- select(d_obs_char, -c(cvo03a, cvo03b, cvo03c, cvo03d, cvo03e, cvo03f))
+
+#dwell_char
+dwell_char <- select(dwell_char, c(folio, cv01_1, cv02_1, cv05, cv06, cv07, cv08_1, cv12, cv16))
+
+#Merging
+master_household2002 <- left_join(control_book, d_obs_char, by = c("folio"))
+master_household2002 <- master_household2002 %>%
+  left_join(., dwell_char, by = c("folio")) %>%
+  left_join(indiv_control_vars,., by = c("folio")) 
+colnames(master_household2002) <- c("hhid", "individual_id", "age", "gender", "hh_status", "marital_status", "hh_income", "education_level", "state", "urban", "locality", "id_loc", "municipality", "type_hh", "electricity", "material_floor", "material_wall", "material_roof", "telephone", "property_status", "cook_room", "sleep_kitchen", "rooms_sleep", "source_water","same_drink_wash_water", "toilet")
+
+#type_hh recode
+type_hh_r <- c("Mobile dwelling", "Warehouse used as a dwelling", "Room loft 12", "Room or house in a vicinity", "Building apartment/Vertical dept", "Sole House sharing walls", "Sole house/does not share walls", "Other")
+
+for (i in 1:8) 
+  {
+  master_household2002 <- mutate(master_household2002, type_hh = ifelse(type_hh==i,type_hh_r[i],type_hh))
+}
+
+rm(type_hh_r)
+
+#material floor recode
+material_floor_n <- c("Wood/slab stone/slab/carpet/covers", "Firm cement", "Soil", "Other")
+
+for (i in 1:4) 
+  {
+  master_household2002 <- mutate(master_household2002, material_floor = ifelse(material_floor==i,material_floor_n[i],material_floor))
+}
+
+rm(material_floor_n)
+
+#material wall recode
+
+mwr <- c("Concrete partition,brick, block", "Adobe", "Wood", "Asbestos", "metallic plate, fiberglass, plastic", "Embarro or bajareque", "Reedgrass/bamboo/shingle","Cardboard sheets", "Residue material","Stone", "Other")
+
+for (i in 1:10) 
+  {
+  master_household2002 <- mutate(master_household2002, material_wall = ifelse(material_wall==i,mwr[i],material_wall))
+}
+
+rm(mwr)
+
+#material roof recode
+mrr <- c("Polyurethane", "Concrete partition,brick, block", "Slate", "Asbestos", "bamboo", "metallic laminate", "Wood", "Cardboard", "Residue Material", "Other")
+
+for (i in 1:10) 
+  {
+  master_household2002 <- mutate(master_household2002, material_roof = ifelse(material_roof==i,mrr[i],material_roof))
+}
+
+rm(mrr)
+
+#Property Status
+pss <- c("Currently paying it", "Your own and fully paid", "Your own ejido/community land", "Borrowed/ given without
+payment", "Rented", "Other")
+
+for (i in 1:6) 
+  {
+  master_household2002 <- mutate(master_household2002, property_status = ifelse(property_status==i,pss[i],property_status))
+}
+
+rm(pss)
+
+#Source of water
+wss <- c("Decanter", "Tap water inside", "Tap water outside", "Water from a truck", "gathered", "Other")
+
+for (i in 1:6) 
+  {
+  master_household2002 <- mutate(master_household2002, source_water = ifelse(source_water==i,wss[i],source_water))
+}
+
+rm(wss)
+
+#Dummies: Electricity, Telephone, cook_room, sleep_kitchen, same_drink_wash_water, toilet
+master_household2002 <- master_household2002 %>%
+  mutate(electricity=ifelse(electricity==3,0,electricity)) %>%
+  mutate(telephone=ifelse(telephone==3,0,telephone)) %>%
+  mutate(cook_room=ifelse(cook_room==3,0,cook_room)) %>%
+  mutate(sleep_kitchen=ifelse(sleep_kitchen==3,0,sleep_kitchen)) %>%
+  mutate(same_drink_wash_water=ifelse(same_drink_wash_water==3,0,same_drink_wash_water)) %>%
+  mutate(toilet=ifelse(toilet==3,0,toilet))
+
+#creating average household adult (older than 15) member education
+hh_avg_educ <- tibble(hh_avg_ed = NA)
+aux <- master_household2002 %>%
+  cbind(.,hh_avg_educ) %>% 
+  mutate(adult=ifelse(age>15,1,ifelse(15 >= age,0,age))) %>%
+  filter(adult==1) %>%
+  group_by(hhid, adult) %>%
+  mutate(hh_avg_ed=mean(education_level, na.rm=TRUE),education_level) %>%
+  ungroup(.) %>%
+  select(c(hhid,hh_avg_ed)) %>%
+  arrange(hhid,desc(hh_avg_ed)) %>%
+  distinct(hhid, .keep_all =TRUE)
+
+master_household2002 <- left_join(master_household2002,aux)
+master_household2002 <- select(master_household2002,-c("education_level"))
+rm(aux)
+
+#Household combined Income
+master_household2002_1 <- master_household2002 %>%
+  group_by(hhid) %>%
+  summarise(hh_income = sum(hh_income, na.rm=TRUE))
+
+master_household2002 <- master_household2002 %>%
+  select(-c(hh_income)) %>%
+  left_join(.,master_household2002_1, by=c("hhid"))
+rm(master_household2002_1)
+
+master_household2002_1 <- master_household2002 %>%
+  filter(hh_status == "HH_head") %>%
+  select(hhid, marital_status) %>%
+  left_join(master_household2002,., by = c("hhid"))
+
+master_household2002 <- select(master_household2002_1, -c("marital_status.x"))
+
+master_household2002 <- filter(master_household2002, age>5, age<15)
+rm(control_book,d_obs_char,dwell_char, hh_avg_educ,indiv_control_vars,master_household2002_1,miss_tib)
+
+#2002 Children under 15 data
+ch_education <- read_dta(here("Data","hh02dta_b5","v_edna.dta"))
+ch_employment <- read_dta(here("Data","hh02dta_b5","v_emn.dta"))
+ch_outp_ut <- read_dta(here("Data","hh02dta_b5","v_cen.dta"))
+ch_t_alloc <- read_dta(here("Data","hh02dta_b5","v_atn.dta"))
+ch_health <- read_dta(here("Data","hh02dta_b5","v_esn.dta"))
+ch_inp_ut <- read_dta(here("Data","hh02dta_b5","v_hsn.dta"))
+
+#Removing redundant variables or with many missing values and renaming them
+ch_education <- ch_education %>%
+  select(folio,ls,edn01,edn01a,edn02,edn03)
+colnames(ch_education) <- c("hhid","individual_id","indig_language","older_5","s_spanish","attend_school")
+
+ch_employment <- ch_employment %>%
+  select(folio,ls,emn01a,emn02,emn04)
+colnames(ch_employment) <- c("hhid", "individual_id", "work_1hr", "work_fam_bus", "work_ever")
+
+ch_health <- ch_health %>%
+  select(folio,ls,esn01)
+colnames(ch_health) <- c("hhid", "individual_id", "health_level")
+
+ch_outp_ut <- ch_outp_ut %>%
+  select(folio,ls,cen01)
+colnames(ch_outp_ut) <- c("hhid", "individual_id", "doctor_visit")
+
+ch_inp_ut <- ch_inp_ut %>%
+  select(folio,ls,hsn01)
+colnames(ch_inp_ut) <- c("hhid", "individual_id", "hospitalized")
+
+ch_t_alloc <- ch_t_alloc %>%
+  select(folio, ls, atn01a:atn01i, atn03)
+colnames(ch_t_alloc) <- c("hhid", "individual_id", "cult_act", "lessons", "watch_tv", "domestic_hwork", "play_outside", "care_elderly", "carried_firewood", "carried_water", "agric_activity", "hours_sleep")
+
+#Merging data sets
+child_master2002 <- left_join(ch_education,ch_employment, by = c("hhid","individual_id")) 
+child_master2002 <- child_master2002 %>%
+  left_join(.,ch_health, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_inp_ut, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_outp_ut, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_t_alloc, by = c("hhid", "individual_id"))
+
+dummies_ch <- names(child_master2002)
+dummies_ch <- dummies_ch[c(3:9, 11:22)]
+for (x in dummies_ch) {
+  x1 <- as.name(x)
+  child_master2002 <- mutate(child_master2002, !! x1 := ifelse(!! x1 == 3 | !!x1 == 2,0,!! x1))
+}
+
+child_master2002 <- filter(child_master2002, older_5==1) %>%
+  select(-c(older_5))
+rm(ch_education,ch_employment,ch_health,ch_inp_ut,ch_outp_ut,ch_t_alloc,miss_tib)
+
+master_household2002 <- master_household2002 %>%
+  mutate(hhid = as.numeric(hhid)) %>%
+  mutate(individual_id = as.numeric(individual_id))
+
+master_2005 <- left_join(child_master2002,master_household2002, by = c("hhid", "individual_id"))
+rm(master_household2002,child_master2002)
+
+aux <- c("state", "urban", "locality", "id_loc", "municipality", "type_hh", "electricity", "material_floor", "material_wall", "material_roof", "telephone", "property_status", "cook_room", "sleep_kitchen", "rooms_sleep", "source_water","same_drink_wash_water", "toilet", "hh_avg_ed",  "hh_income", "marital_status.y")
+
+Mode <- function(x) {
+  ux <- unique(x) 
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+master_2005 <- group_by(master_2005, by = hhid)
+
+for (x in aux) {
+x1 <- as.name(x)
+  master_2005 <- mutate(master_2005, !! x1 := ifelse(is.na(!! x1), Mode(!! x1), !! x1)) 
+}
+
+master_2005 <- ungroup(master_2005) %>%
+  select(-c(by))
+rm(aux)
+```
+
 ##THE FOLLOWING IS NOT READY, WE HAVE TO SEE IF IT'S WORTH IT
 
 ```{r, echo=FALSE, cache=TRUE}
