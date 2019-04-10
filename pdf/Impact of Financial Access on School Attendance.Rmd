@@ -803,15 +803,13 @@ We proceeded to filter out these variables (keeping a single one for reference) 
 ```{r, fig.align="center", fig.width=8, fig.height=4, cache=TRUE, include=TRUE}
 master_2002_num <- master_2002 %>%
   select_if(is.numeric) %>%
-  select(-c(hhid,individual_id, age, state, municipality, id_loc, community, attend_school,
-        work_1hr, work_fam_bus, work_ever, care_elderly, watch_tv, telephone, sleep_kitchen,
-        same_drink_wash_water, carried_firewood, doctor_visit, cook_room))
+  select(c(domestic_hwork, agric_activity, cult_act, rooms_sleep, hh_avg_ed,
+           s_spanish, electricity, hours_sleep, toilet, health_level, indig_language))
 
 master_2002PCA <- PCA(master_2002_num, graph = FALSE)
 
 fviz_eig(master_2002PCA, addlabels = TRUE, geom = c("line"), linecolor = "steelblue") +
   theme_minimal() +
-coord_cartesian(ylim = c(0, 12)) +
 labs(x="Dimensions",
       y="Percentage of Explained Variances",
       title="Percentage of Explained Variances",
@@ -826,21 +824,35 @@ theme(plot.title=element_text(hjust=.5,size=10),
   
 ```
 
-The remaining dimensions have a very uniform percent of explained variance; the range for the maximum and minimum for the eigenvalues is (4.35%, 11.32%). This seems to suggest that we have reduced the dimensions as much as possible.
+The remaining dimensions have a very uniform percent of explained variance; the range for the maximum and minimum for the eigenvalues is (7.1%, 14.9%). This seems to suggest that we have reduced the dimensions as much as possible.
 
-We repeated the same principal component analysis (PCA) for categorical variables (refer to Appendix - Part 2). The `caret` package was used to transform categorical variables into dummies to make the analysis possible. Given the many categorical variables and the many categories within those variables we first analyzed those categories which we intuitively thought would be most related. The first category was "physical characteristics of the household" (i.e. material of the walls, materials of the floor, access to water, etc.). From rounds one through five we applied the PCA for each categorical variable in the broader category of physical characteristics of the household and eliminated the variables which provided the least in terms of percentage of explained variance; for round six we compiled all of the relevant categories from the previous rounds and ran PCA again; finally, in round 7 we kept the six categories for physical characteristics of the household which provided the most in terms of explained varianc The same process was repeated for categorical variables `marriage_status` (i.e. single, married, divorced, etc.) and `property_status` (i.e. rent, own, communal land, etc.)
+We repeated the same principal component analysis (PCA) for categorical variables (refer to Appendix - Part 2). The `caret` package was used to transform categorical variables into dummies to make the analysis possible. Given the many categorical variables and the many categories within those variables we first analyzed those categories which we intuitively thought would be most related. The first category was "physical characteristics of the household" (i.e. material of the walls, materials of the floor, access to water, etc.). From rounds one through five we applied the PCA for each categorical variable in the broader category of physical characteristics of the household and eliminated the variables which provided the least in terms of percentage of explained variance; for round six we compiled all of the relevant categories from the previous rounds and ran PCA again; finally, in round 7 we kept the six categories for physical characteristics of the household which provided the most in terms of explained varianc The same process was repeated for categorical variables `marriage_status` (i.e. single, married, divorced, etc.) and `property_status` (i.e. rent, own, communal land, etc.). From over 90 covariates we managed to reduce the number to 30.
+
+```{r, cache=TRUE}
+dmy <- dummyVars("~ .", data = master_2002, fullRank = TRUE) 
+master_2002_clean <- data.frame(predict(dmy, newdata = master_2002)) 
+
+master_2002_clean <- master_2002_clean %>%
+  select(c(hhid,individual_id, attend_school, age, state, municipality,
+           attend_school, domestic_hwork, agric_activity, cult_act,rooms_sleep, hh_avg_ed,
+           s_spanish, electricity, hours_sleep, toilet, health_level,
+           indig_language, carried_water, material_roofPolyurethane,
+           material_floorWood.slab.stone.slab.carpet.covers,
+           material_roofConcrete.partition.brick..block, material_wallConcrete.partition.brick..block,
+           material_floorSoil, material_roofCardboard, property_statusOther, property_statusRented,
+           property_statusYour.own.and.fully.paid, property_statusYour.own.ejido.community.land,
+           marital_status.yMarried, marital_status.ySingle, marital_status.yWidowed))
+```
 
 
+##Banks Data
 
-
-
-##THE FOLLOWING IS NOT READY, WE HAVE TO SEE IF IT'S WORTH IT
+Once we reduced the number of covariates considerably, we proceeded to create the bank information data set. From an xls spreadsheet in the Comision Nacional Bancaria y de Valores (CNBV) we loaded the data set called `BM_Operativa_200212.xls` using the `readxl` package; this data set contains the information aboout the number of bank branches per municipality in Mexico (with an exhaustive list of every bank authorized for operations in Mexico by the CNBV). Extensive string manipulations had to be done in order to make the data sets comparable with those in the previous sections; this was due to the fact that the locations were encoded as strings as opposed to numbers and even with another data set called `Relacion_de_municipios_de_Mexico.xlsx` which contains the relationship between municipalities names and their official corresponding numbers, the merging process required extensive manipulation.
 
 ```{r, echo=FALSE, cache=TRUE}
 #Sucursales Azteca
 azteca_2002 <- read_xls(here("Data","BM_Operativa_200212.xls"))
 ```
-
 ```{r, cache=TRUE}
 #Municipalities names and codes
 mpios <- read_xlsx(here("Data","Relacion_de_municipios_de_Mexico.xlsx"))
@@ -879,7 +891,7 @@ azteca_2002 <- azteca_2002 %>%
   filter(., !is.na(munic_cnbv_code))
 
 #Filling State missing values
-for (i in 1:783) {
+for (i in 1:nrow(azteca_2002)) {
   if (is.na(azteca_2002[i,"edo_str"])) {
     azteca_2002[i,"edo_str"]=azteca_2002[i-1,"edo_str"]
     }else{
@@ -916,18 +928,59 @@ by_edo_azt02[31,2]=31
 #Merging states number identification with azteca_2002
 azteca_2002 <- left_join(azteca_2002,by_edo_azt02,by="edo_str")
 
-#Merging Municipalities
-by_edo_azt02CAPS <- by_edo_azt02
-by_edo_azt02CAPS <- mutate(by_edo_azt02CAPS,edo_str=toupper(edo_str))
+#Repairing problems with keys to be able to merge
+by_edo_azt02CAPS <- by_edo_azt02 
+by_edo_azt02CAPS <- mutate(by_edo_azt02,edo_str=toupper(edo_str))
 by_edo_azt02CAPS$edo_str <- iconv(by_edo_azt02CAPS$edo_str, from = 'UTF-8', to = 'ASCII//TRANSLIT')
 by_edo_azt02CAPS[9,1]="CIUDAD DE MEXICO"
 by_edo_azt02CAPS[7,1]="COAHULIA"
 by_edo_azt02CAPS[15,1]="ESTADO DE MEXICO"
+by_edo_azt02CAPS[2,1]="BAJA CALIFORNIA"
+by_edo_azt02CAPS[28,1]="NAYARIT"
+
+#Checking if strings by state are called the same
+unique_edo <- unique(mpios$edo_str) 
+unique_edo <- tibble(edo_str = unique_edo) 
+key_problems <- anti_join(by_edo_azt02CAPS, unique_edo, "edo_str")
+
+#Merging State number to Municipalities
 mpios <- mpios %>% 
   left_join(.,by_edo_azt02CAPS,by="edo_str") %>%
-  select(.,mpio,mpio_str,edo)
-azteca_2002 <- inner_join(azteca_2002,mpios,by=c("mpio_str","edo"))
+  select(mpio,mpio_str,edo)
+```
+
+```{r, cache=TRUE}
+#Removing problematic strings to be able to merge
+azteca_2002 <- azteca_2002 %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "[:punct:]")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLOS")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLAS")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLA")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sEL")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLOCALIDAD\\sDE")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sMUNICIPIO\\sDE")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "CIUDAD")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\s")) 
+
+mpios <- mpios %>% 
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "[:punct:]")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "^LOS\\s")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "^LA\\s")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "^EL\\s")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "CIUDAD")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\s")) 
+
+key_mpio_problem <- anti_join(azteca_2002,mpios,by=c("mpio_str","edo")) 
+
+```
+
+```{r, cache=TRUE}
+#Merging municipalities number
+azteca_2002 <-inner_join(azteca_2002, mpios, by=c("mpio_str","edo")) 
 azteca_2002 <- filter(azteca_2002,edo!=is.na(edo), mpio!=is.na(mpio))
+
+
+rm(aux, azteca_2002aux, by_edo_azt02, by_edo_azt02CAPS, key_mpio_problem, key_problems, mpios_aux, unique_edo)
 ```
 ```{r, cache=TRUE}
 #Renaming variables
@@ -951,13 +1004,14 @@ for (x in azt_numvar_names) {
   azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("ifelse(is.na(",x,"),0,",x,")"),x))
 }
 ```
-
-
-
-
+```{r, cache=TRUE}
+azteca_2002 <- azteca_2002 %>%
+  mutate(banks = select(., amex:royal_bank_scotland) %>% apply(1, sum, na.rm=TRUE))
+```
 
 
 \newpage
+
 #References
 
 \begin{itemize}
