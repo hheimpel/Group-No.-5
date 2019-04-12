@@ -39,7 +39,7 @@ There are multiple data sets which will comprise the source of our analysis. We 
 
 #Tools
 
-##Constructing Data for 2002 & 2002
+##Constructing Data for 2002 & 2005
 
 Manipulating the data and preparing it for analysis required a great deal of work; we describe the process, the main tools used to clean the data and all of the manipulations done in order to obtain the final working data sets.
 
@@ -836,18 +836,116 @@ master_2002_clean <- master_2002_clean %>%
   select(c(hhid,individual_id, attend_school, age, state, municipality,
            attend_school, domestic_hwork, agric_activity, cult_act,rooms_sleep, hh_avg_ed,
            s_spanish, electricity, hours_sleep, toilet, health_level,
-           indig_language, carried_water, material_roofPolyurethane,
+           indig_language, carried_water, hh_income, material_roofPolyurethane,
            material_floorWood.slab.stone.slab.carpet.covers,
            material_roofConcrete.partition.brick..block, material_wallConcrete.partition.brick..block,
            material_floorSoil, material_roofCardboard, property_statusOther, property_statusRented,
            property_statusYour.own.and.fully.paid, property_statusYour.own.ejido.community.land,
            marital_status.yMarried, marital_status.ySingle, marital_status.yWidowed))
+
+rm(dmy)
 ```
 
 
+##Supervised Learning
+Once the covariates were significantly reduced we proceeded to build a a supervised learning model to ascertain which covariates had the most predictive power for school attendance.  Given that the rate of school attendance is over 90%, our measure of choice for the goodness of fit of the model was Specificity (of the actual true negatives, how many were correctly classified). The first step was creating a training data set and a testing data set and rescaling continuous variables by applying logarythms.
+
+```{r, cache=TRUE}
+#Training data set
+set.seed(1991)
+index <- runif(nrow(master_2002_clean),0,1)
+master_2002_train <- master_2002_clean %>%
+  cbind(index) %>%
+  filter(index<=.8) %>%
+  select(-c(hhid, individual_id, index, state, municipality))
+
+#Test data set
+master_2002_test <- master_2002_clean %>%
+  cbind(index) %>%
+  filter(index>.8) %>%
+  select(-c(hhid, individual_id, index, state, municipality))
+
+convert_log <- function(data, variable){ 
+  variable <- enquo(variable) 
+  vname <- paste0(quo_name(variable))
+  mutate(data, !! vname := log(!! variable + 1))
+}
+
+#Logs to train data
+master_2002_train <- master_2002_train %>%
+  convert_log(rooms_sleep) %>%
+  convert_log(hh_avg_ed) %>%
+  convert_log(hours_sleep) %>%
+  convert_log(hh_income) %>%
+  convert_log(age)
+
+#Logs to test data
+master_2002_test <- master_2002_test %>%
+  convert_log(rooms_sleep) %>%
+  convert_log(hh_avg_ed) %>%
+  convert_log(hours_sleep) %>%
+  convert_log(hh_income) %>%
+  convert_log(age)
+
+```
+The next step consisted of preparing the data set by normalizing continuous variables (categorical variables were previously converted to dummies). Furthermore, missing values were imputed (using the mode for dummy variables and the median for continuous variables). Next, we set the number of cross-validations to 5 and since this is a classification problem, the proper settings were established. The `recipes` package was necessary for these steps.
+
+```{r, cache=TRUE}
+#Recipe
+recipe <- recipe(attend_school~., master_2002_train) %>%
+  step_range(rooms_sleep, hh_avg_ed, hours_sleep, hh_income, age) %>%
+  step_medianimpute(all_numeric()) %>%
+  prep()
+
+master_2002_train_norm <- master_2002_train %>%
+  bake(recipe, .) %>%
+  mutate(attend_school=ifelse(attend_school==1,"Attend", "Not_Attend"))
+  
+master_2002_test_norm <- master_2002_test %>%
+  bake(recipe, .) %>%
+  mutate(attend_school=ifelse(attend_school==1,"Attend", "Not_Attend"))
+```
+
+```{r, cache=TRUE}
+#Cross validation and control settings
+set.seed(1991)
+folds <- createFolds(master_2002_train_norm$attend_school, k = 5)
+control_conditions <- trainControl(method='cv',
+  number=5,
+  summaryFunction = twoClassSummary,
+  classProbs = TRUE,
+  index = folds
+  )
+```
+We then ran a CART model and tuned the complexity parameter until we found results that converged to a maximum level of specificity (for details check Appendix - Part 3).
+```{r, cache=TRUE}
+cart_parameters <- expand.grid(cp=c(.000005,.0005,.01))
+mod_cart <-
+train(attend_school~.,
+data=master_2002_train_norm,
+method = "rpart",
+metric = "Specificity",
+tuneGrid = cart_parameters,
+trControl = control_conditions
+)
+```
+The second model we ran was a random forest, the packages `ranger` and `e1071` were needed for this purpose. The tuning parameter was `mtry` which states how many predictors the model can take (for details check Appendix - Part 3). 
+```{r, cache=TRUE}
+forest_parameters <- expand.grid(data.frame(mtry=c(3,5,10,15),splitrule="gini",min.node.size=10))
+                                              
+mod_forest <- train(attend_school ~ .,
+  data=master_2002_train_norm,
+  method = "ranger",
+  metric = "Specificity",
+  importance = "impurity",
+  tuneGrid = forest_parameters,
+  trControl = control_conditions
+)
+```
+
 ##Banks Data
 
-Once we reduced the number of covariates considerably, we proceeded to create the bank information data set. From an xls spreadsheet in the Comision Nacional Bancaria y de Valores (CNBV) we loaded the data set called `BM_Operativa_200212.xls` using the `readxl` package; this data set contains the information aboout the number of bank branches per municipality in Mexico (with an exhaustive list of every bank authorized for operations in Mexico by the CNBV). Extensive string manipulations had to be done in order to make the data sets comparable with those in the previous sections; this was due to the fact that the locations were encoded as strings as opposed to numbers and even with another data set called `Relacion_de_municipios_de_Mexico.xlsx` which contains the relationship between municipalities names and their official corresponding numbers, the merging process required extensive manipulation.
+Once we reduced the number of covariates considerably, we proceeded to create the bank information data set. From an xls spreadsheet in the Comision Nacional Bancaria y de Valores (CNBV) we loaded the data set called `BM_Operativa_200212.xls` using the `readxl` package; this data set contains the information aboout the number of bank branches per municipality in Mexico (with an exhaustive list of every bank authorized for operations in Mexico by the CNBV). Extensive string manipulations with the `stringr` package had to be done in order to make the data sets comparable with those in the previous sections; this was due to the fact that the locations were encoded as strings as opposed to numbers and even with another data set called `Relacion_de_municipios_de_Mexico.xlsx` which contains the relationship between municipalities names and their official corresponding numbers, the merging process required extensive manipulation.
 
 ```{r, echo=FALSE, cache=TRUE}
 #Sucursales Azteca
@@ -1010,8 +1108,27 @@ azteca_2002 <- azteca_2002 %>%
 ```
 
 
-\newpage
+#Results
 
+We started by examing the supervised learning models to assess which one had the highest specificity level. Even though specificity was low, we can observe from the following graph that the CART model had the highest level. This was corroborated by testing the model in out of sample data Appendix - Part 3).
+
+```{r, include=TRUE, fig.align="center", fig.width=8, fig.height=4, cache=TRUE}
+mod_list <- list("CART" = mod_cart, "Forest" = mod_forest)
+
+dotplot(resamples(mod_list))
+```
+
+We chose the CART model to obtain information about the predictive accuracy for the variable `attend_school` of each covariate. We conjectured that the top 6 covariates were enough controls to include in our linear regression, these are:
+
+- `age`: age of the child at time of interview.
+- `hours_sleep`: average sleeping hours for child.
+- `hh_avg_educ`: average level of education of household members.
+- `hh_income`: household combined income.
+- `cult_act`: whether ther have performed recent cultural activites.
+- `domestic_hwork`: whether the child helps in domestic household work.
+
+
+\newpage
 #References
 
 \begin{itemize}
@@ -1026,6 +1143,8 @@ azteca_2002 <- azteca_2002 %>%
   https://CRAN.R-project.org/package=tidyverse
     \item Kirill Müller (2017). here: A Simpler Way to Find Your Files. R package version 0.1.
   https://CRAN.R-project.org/package=here
+    \item Marvin N. Wright, Andreas Ziegler (2017). ranger: A Fast Implementation of Random Forests for High
+  Dimensional Data in C++ and R. Journal of Statistical Software, 77(1), 1-17. doi:10.18637/jss.v077.i01
     \item Max Kuhn and Hadley Wickham (2019). recipes: Preprocessing Tools to Create Design Matrices. R package
   version 0.1.5. https://CRAN.R-project.org/package=recipes
     \item Max Kuhn. Contributions from Jed Wing, Steve Weston, Andre Williams, Chris Keefer, Allan Engelhardt, Tony
@@ -1266,3 +1385,33 @@ fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5
 
 
 \newpage
+
+##Part 3 - Supervised Learning
+
+###CART model
+
+```{r, include=TRUE}
+mod_cart
+```
+###Random forest
+```{r, include=TRUE}
+mod_forest
+```
+
+###Out of sample prediction CART model
+```{r, cache=TRUE, include=TRUE}
+pred_CART <- predict(mod_cart,newdata = master_2002_test_norm)
+confusionMatrix(table(pred_CART,master_2002_test_norm$attend_school))
+```
+###Out of sample prediction forest model
+```{r, include=TRUE, cache=TRUE}
+pred_forest <- predict(mod_forest,newdata = master_2002_test_norm)
+confusionMatrix(table(pred_forest,master_2002_test_norm$attend_school))
+```
+###Covariate Importance (CART model):
+
+```{r, include=TRUE, cache=TRUE}
+plot(varImp(mod_cart))
+```
+
+
