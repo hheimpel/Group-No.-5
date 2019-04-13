@@ -1,7 +1,7 @@
 ---
 title: "Impact of Financial Access on School Attendance"
 author: "Group No. 5"
-date: "February 11, 2019"
+date: "April 29, 2019"
 output: pdf_document
 fontsize: 12pt
 documentclass: article
@@ -31,21 +31,32 @@ require("FactoMineR")
 \end{itemize}
 \textbf{Github Repository:} https://github.com/hheimpel/Group-No.-5 
 
+\newpage
+
 #Problem Statement and Background
 
-There are multiple data sets which will comprise the source of our analysis. We will be using the Mexican Family Life Survey (ENNVIH) as the main source. The ENNVIH consists of multiple books each containing a set of data sets in `.dta` form; the first group of data sets is contained in the Control Book for 2002. The data sets contained within this book contain household level characteristics and they are divided into two categories. The first category contains characteristics observed in the household by the interviewer (i.e. proximity to water source, type of floor, etc.) and the second category contains answers to individual level survey questions (i.e. marital status, maximum education grade, etc.). The second group of data sets are contained in Book V for 2002 in the Mexican Family Life Survey. These group of datasets contain information about characteristics of children under 15 years of age, they include but are not limited to, child employment, child health characteristics and more.  
+School attendance has been considered important to economic growth because of its association with productivity. The general idea behind this is that people with higher education have higher income, as evidenced by Ashenfelter (1997). There are many factors that could affect why a child attends or does not attend school. In particular, financial access could affect schooling through access to credit and savings with better conditions. According to Becker (1975), by limiting the incentives and capacity to invest in human capital, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development. In Aportela (1998) it was found that access to financial services increases savings on low-income people. What this could imply is that with better access to financial instruments that allow people to save money, a household head may better prepare for the expenses that will have to be made when the child goes to school. In other words, by having access to these financial services a household head may be able to ask for a credit in order to meet their basic needs instead of putting a child to work.
+
+The main question we are concerned with is whether access to banking services has an effect on school attendance for children under 15 and over 6 years of age. According to Augsburg, Harmgart and Meghir (2012) there are several channels through which microfinance can impact education. One possibility is that microfinance through the loan and the expanded business activity alleviates liquidity constraints and leads to an expansion of school attendance and a decrease in child labor. With a sufficiently low interest rate and a sufficiently high rise in productivity thanks to schooling, households likely will decide to attend school because the financial market allows them to smooth out their consumption, whereas income may have a sudden jump due to the differences in productivity that arise due to schooling. 
+
+There are multiple data sets which will comprise the source of our analysis. The main source for the outcome `attend_school` and the control characteristics are in the Mexican Family Life Survey (ENNVIH). The ENNVIH is a set of multiple books each containing a set of data sets. We used the control book for 2002 (M X F L S - Book C). This book contains several control characteristics at an individual level (i.e. marital status, maximum education grade, etc.) and at a household level (i.e. proximity to water source, type of floor, etc.). The second book of data sets are contained in book V for 2002 (M X F L S - Book V). This book contains several characteristics at an individual level for children under 15 years of age. They include but are not limited to, child employment, child health characteristics and more. The last group of data sets is contained in the Bank Operational Information from the Comision Nacional Bancaria y de Valores (CNBV). This data set contains information about the locations of bank branches in 2002 for Mexico.
 
 #Methods
 
+The first step consisted of creating a unique data set which contained all of the pertinent covariates from the multiple data sets. Extensive use of the `tidyverse` was necessary to recode, reorganize, merge and tidy the data.
+One issue with the `tidyverse` was the difficulty in running loops through the `mutate` function and creating functions which included `mutate`; however, the issue had a solution within the same package. Once the unique data set was constructed by merging all of the data sets in (M X F L S - Book C) & (M X F L S - Book V) contained over 90 covariates —even after removing redundant variables, variables with excessive percentage of missing values and containing little useful information— we used Principal Component Analysis (PCA) to reduce the number of covariates substantively; the `FactoMineR` and `factoextra` packages were used for this purpose. This was a labour intensive work and one suggestion could be having as output the suggested variables to drop.
+
+Even after running PCA there were still a considerable amount of covariates. For this purpose we used Supervised Machine Learning techniques to explore which covariates were the most important in predicting `attend_school`. The idea behind this was to be able to eliminate covariates which didn't contribute much to the prediction of school attendance; by doing so, it would provide evidence (minimal as it may be) that the included covariates when running the regression to ascertain the effects of bank access on school attendance were enough to eliminate or minimize bias in the regression coefficients. We ran two models in order to do this, a random forest —modifying the number of covariates included as a tuning parameter— and a classification and Regression Tree (CART) —modifying the complexity parameter as a tuning parameter— and chose the one with highest specificity metric to obtain the list of covariates which were most important in predicting `attend_school`.
+
 #Tools
 
-##Constructing Data for 2002 & 2005
+##Constructing Data
 
 Manipulating the data and preparing it for analysis required a great deal of work; we describe the process, the main tools used to clean the data and all of the manipulations done in order to obtain the final working data sets.
 
-###Household Level Data for 2002 & 2005
+###Household Level Data
 
-We start by loading the control book for 2002 (M X F L S - Book C). This book contains several control characteristics at an individual level and at a household level. Within the book there are four pertinent data sets to be used:
+We start by loading the control book for 2002 (M X F L S - Book C). Within the book there are four pertinent data sets to be used:
 
 1. `c_portad.dta`: contains the location of the households by State, Municipality and Locality. It further contains a variable indicating number of inhabitants in Locality. This is a Household level data set.
 2. `c_cv.dta`: contains physical characteristics of the household (i.e. whether it has a cooking room, a telephone, etc.). This is a Household level data set.
@@ -281,7 +292,7 @@ rm(control_book,d_obs_char,dwell_char, hh_avg_educ,indiv_control_vars,master_hou
 ```
 ###Child Individual Data
 
-We then proceeded to load individual level data for children by loading the book V for 2002 (M X F L S - Book V). This book contains several characteristics at an individual level for children under 15 years of age. Within the book there are six pertinent data sets to be used:
+We then proceeded to load individual level data for children by loading the book V for 2002 (M X F L S - Book V). Within the book there are six pertinent data sets to be used:
 
 1. `v_edna.dta`: contains information regarding children's education.
 2. `v_emn.dta`: contains information regarding child labor.
@@ -438,7 +449,6 @@ master_2002 <- ungroup(master_2002) %>%
 rm(aux)
 ```
 
-We repeat the same process as for the 2002 data set to create the 2005 data set. All the data sets and variables are named the same and the same patterns of missing values were displayed in 2005 as in 2002; this made it a lot easier to replicate the code with minor changes.
 
 ```{r, echo=FALSE, cache=TRUE}
 #2005 Household data
@@ -688,9 +698,9 @@ rm(aux)
 
 ###School Attendance Distribution
 
-In our exploratory analysis, we started by simply looking at School Attendance distribution by age in 2002 and 2005:
+In our exploratory analysis, we started by simply looking at School Attendance distribution by age in 2002:
 
-```{r, fig.align = "center", cache = TRUE, fig.width = 8, fig.height=4, include=TRUE}
+```{r, fig.align = "center", cache = TRUE, fig.width = 5, fig.height=3.6, include=TRUE}
 sch_age_plot <- group_by(master_2002, age) %>%
   summarise(avg_school = mean(attend_school, na.rm=TRUE)) %>% 
   ggplot(aes(x=age,y=avg_school)) +
@@ -726,13 +736,13 @@ sch_age_plot2005 <- group_by(master_2005, age) %>%
         panel.grid.minor.x=element_blank(),
         panel.grid.minor.y=element_blank())
 
-grid.arrange(sch_age_plot, sch_age_plot2005, ncol=2)
+sch_age_plot
 rm(sch_age_plot, sch_age_plot2005)
 ```
 
-There seemed to be some fundamental change from 2002 to 2005 in school attendance, especially for young children under the age of seven. We explored the missing values in both data sets to look for systematic patterns of missing data and found that over 700 missing values for the variable `age` were found in the 2002; in contrast, over 3,500 (almost 40 percent of the  observations) missing values were found in the 2005 data set. We cannot ignore the systematic number of age missing values and perhaps this is what is causing the dramatic shift in school attendance from 2002 to 2005. Since this is panel data, a plausible hypothesis in the data recollection process is that new members of the household could have been added but for the household control questions in 2005 they only asked the information for the people present in 2002. The following graphs compare the age distribution across both data sets:
+It is important to notice the scale on the y-axis, for every age group children are attending school at rates of over 90 percent —this influenced our goodness of fit measure in the supervised learning section—. This graph is important to keep in mind because the estimated impact of access to banks will be stratified by age to allow for the effect to be different by different groups of age. To illustrate how this could have an impact on the aggregated or average effect (average across groups of age to be specific), the following graph show the percentage distribution of the sample by age:
 
-```{r, fig.align = "center", cache = TRUE, fig.width = 8, fig.height=4, include=TRUE}
+```{r, fig.align = "center", cache = TRUE, fig.width = 5, fig.height=3.6, include=TRUE}
 plot1 <- ggplot(master_2002, aes(x=age, y=(..count..)/sum(..count..))) +
 geom_bar(colour = "white", fill = "gray", alpha =.75) +
 theme_minimal() +
@@ -765,11 +775,10 @@ theme(plot.title=element_text(hjust=.5,size=10),
         panel.grid.minor.x=element_blank(),
         panel.grid.minor.y=element_blank()) 
 
-grid.arrange(plot1, plot2, ncol=2)
+plot1
 rm(plot1, plot2)
 ```
 
-The graph seem to corroborate the hypothesis that in the data collection process they focused on interviewing people who were present in the 2002 round of surveys. This could potentially have some influence in the results so it is important to keep this in mind if the models are to be applied somewhere else. 
 
 ###Principal Component Analysis
 
@@ -848,7 +857,7 @@ rm(dmy)
 
 
 ##Supervised Learning
-Once the covariates were significantly reduced we proceeded to build a a supervised learning model to ascertain which covariates had the most predictive power for school attendance.  Given that the rate of school attendance is over 90%, our measure of choice for the goodness of fit of the model was Specificity (of the actual true negatives, how many were correctly classified). The first step was creating a training data set and a testing data set and rescaling continuous variables by applying logarythms.
+Once the covariates were significantly reduced we proceeded to build a supervised learning model to ascertain which covariates had the most predictive power for school attendance.  Given that the rate of school attendance is over 90%, our measure of choice for the goodness of fit of the model was \textbf{Specificity} (of the actual true negatives, how many were correctly classified). The first step was creating a training data set and a testing data set and rescaling continuous variables by applying logarythms.
 
 ```{r, cache=TRUE}
 #Training data set
@@ -945,7 +954,9 @@ mod_forest <- train(attend_school ~ .,
 
 ##Banks Data
 
-Once we reduced the number of covariates considerably, we proceeded to create the bank information data set. From an xls spreadsheet in the Comision Nacional Bancaria y de Valores (CNBV) we loaded the data set called `BM_Operativa_200212.xls` using the `readxl` package; this data set contains the information aboout the number of bank branches per municipality in Mexico (with an exhaustive list of every bank authorized for operations in Mexico by the CNBV). Extensive string manipulations with the `stringr` package had to be done in order to make the data sets comparable with those in the previous sections; this was due to the fact that the locations were encoded as strings as opposed to numbers and even with another data set called `Relacion_de_municipios_de_Mexico.xlsx` which contains the relationship between municipalities names and their official corresponding numbers, the merging process required extensive manipulation.
+Once we reduced the number of covariates considerably, we proceeded to create the bank information data set. From an xls spreadsheet in the Comision Nacional Bancaria y de Valores (CNBV) we loaded the data set called `BM_Operativa_200212.xls` using the `readxl` package; this data set contains the information about the number of bank branches per municipality in Mexico (with an exhaustive list of every bank authorized for operations in Mexico by the CNBV). Extensive string manipulations with the `stringr` package had to be done in order to make the data sets comparable with those in the previous sections; this was due to the fact that the locations were encoded as strings as opposed to numbers and even with another data set called `Relacion_de_municipios_de_Mexico.xlsx`, which contains the relationship between municipalities names and their official corresponding numbers, the merging process still required extensive manipulation.
+
+In addition to the previous, a dummy variable indicating the presence of at least one bank branch per municipality was created. The CNBV data set contains an exhaustive list of bank branches, therefore municipalities not included in this data set do not have any bank branches; what this implies is that the missing values for the bank dummy when merging the ENNVIH data set and the CNBV data set are really values of zero.
 
 ```{r, echo=FALSE, cache=TRUE}
 #Sucursales Azteca
@@ -1106,6 +1117,37 @@ for (x in azt_numvar_names) {
 azteca_2002 <- azteca_2002 %>%
   mutate(banks = select(., amex:royal_bank_scotland) %>% apply(1, sum, na.rm=TRUE))
 ```
+```{r, cache=TRUE}
+#Merge with original data set
+azteca_2002_m <- azteca_2002 %>%
+  select(state=edo,municipality=mpio,banks)
+
+master_2002_banks <- master_2002 %>%
+  select(hhid, individual_id, state, municipality, attend_school, age, hours_sleep,
+         hh_avg_ed, hh_income, cult_act, domestic_hwork)%>%
+  convert_log(hh_avg_ed) %>%
+  convert_log(hours_sleep) %>%
+  convert_log(hh_income) %>%
+  filter(state != is.na(state))
+  
+#Recipe for imputing missing values
+recipe2 <- recipe(attend_school~., master_2002_banks) %>%
+  step_range(hh_avg_ed, hours_sleep, hh_income) %>%
+  step_medianimpute(all_numeric()) %>%
+  prep()
+
+azteca_2002_g <- azteca_2002_m %>%
+  group_by(state, municipality) %>%
+  summarise(n = n(), banks = max(banks)) %>%
+  select(state, municipality, banks)
+
+master_2002_banks <- master_2002_banks %>%
+  bake(recipe2, .) %>%
+  left_join(., azteca_2002_g, by = c("state", "municipality")) %>%
+  mutate(banks = ifelse(state==9,42254,banks)) %>%
+  mutate(banks = ifelse(is.na(banks),0,1))
+
+```
 
 
 #Results
@@ -1118,7 +1160,7 @@ mod_list <- list("CART" = mod_cart, "Forest" = mod_forest)
 dotplot(resamples(mod_list))
 ```
 
-We chose the CART model to obtain information about the predictive accuracy for the variable `attend_school` of each covariate. We conjectured that the top 6 covariates were enough controls to include in our linear regression, these are:
+We chose the CART model to obtain information about the predictive accuracy for the variable `attend_school` of each covariate. We conjectured that the top 6 covariates were enough controls to include in our linear regression (Appendix - Part 3), these are:
 
 - `age`: age of the child at time of interview.
 - `hours_sleep`: average sleeping hours for child.
@@ -1128,6 +1170,13 @@ We chose the CART model to obtain information about the predictive accuracy for 
 - `domestic_hwork`: whether the child helps in domestic household work.
 
 
+
+```{r, cache=TRUE}
+
+```
+
+
+
 \newpage
 #References
 
@@ -1135,6 +1184,10 @@ We chose the CART model to obtain information about the predictive accuracy for 
   \itemsep0em
     \item Alboukadel Kassambara and Fabian Mundt (2017). factoextra: Extract and Visualize the Results of
   Multivariate Data Analyses. R package version 1.0.5. https://CRAN.R-project.org/package=factoextra
+    \item Aportela, Fernando. (1998) Effects of Financial Access on Savings by Low-Income People, Mimeo, MIT.
+    \item Ashenfelter, Orley and Cecilia Rouse (1997). Income, Schooling, and Ability: Evidence from a New Sample of   Identical Twins, Quarterly Journal of Economics, Vol. 113, p. 253-284.
+    \item Augsburg, Britta, Ralph De Haas, Heike Harmgart, and Costas Meghir (2013) Micro-finance, Poverty and   Education. National Bureau of Economic Research, Inc NBER Working Papers 18538..
+    \item Becker, Gary (1975). Human Capital, 2nd ed., Columbia University Press, New York, NY, 1975.
     \item Brandon M. Greenwell (2017). pdp: An R Package for Constructing Partial Dependence Plots. The R Journal,
   9(1), 421--436. URL https://journal.r-project.org/archive/2017/RJ-2017-016/index.html.
     \item Hadley Wickham and Evan Miller (2018). haven: Import and Export 'SPSS', 'Stata' and 'SAS' Files. R package
