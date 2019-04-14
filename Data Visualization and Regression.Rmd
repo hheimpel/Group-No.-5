@@ -1,0 +1,114 @@
+---
+title: "DATA VISUALIZATION AND REGRESSION"
+output: html_document
+---
+
+```{r}
+install.packages("mnormt")
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Bivariate OLS regression
+```{r}
+f1 <- lm(attend_school ~ banks, data = master_2002_banks)
+summary(f1) 
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+ggplot(master_2002_banks, aes(x = banks, y = attend_school)) +  
+  geom_point() + 
+  stat_smooth(method = "lm", col = "red")
+```
+
+
+```{r}
+age <- as.numeric(master_2002_banks$age)
+```
+
+## OLS regression with control variables 
+```{r}
+f2 <- lm(attend_school ~ banks + age + hours_sleep + hh_avg_ed + hh_income + cult_act + domestic_hwork + factor(municipality), data = master_2002_banks) 
+summary(f2) 
+# should i add  + factor(municipality) here?
+```
+
+## Linear regression allowing for the effect of banks to be different by age (convert age to dummies and create the proper interactions)
+```{r}
+install.packages("sjPlot")
+install.packages("sjmisc")
+```
+
+```{r}
+library(sjPlot)
+library(sjmisc)
+
+# fit model with interaction
+f3 <- lm(attend_school ~ banks + age + hours_sleep + hh_avg_ed + hh_income + age + cult_act + domestic_hwork + age*hh_income, data = master_2002_banks)
+summary(f3)
+plot_model(f3, type = "pred", terms = c("hh_income", "age"))
+```
+
+## logit regression
+```{r}
+install.packages("margins")
+install.packages("ggeffects")
+```
+
+```{r}
+library(ggeffects)
+library("lme4")
+```
+
+```{r}
+f5 <- glmer(attend_school ~ banks + (1|municipality), data = master_2002_banks, family = 'binomial')
+print(f5, corr = FALSE)
+summary(f5)
+```
+
+```{r}
+plot(fitted(f5), residuals(f5), xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, lty = 2)
+```
+
+
+```{r}
+f6 <- glmer(attend_school ~ banks + age + hours_sleep + hh_avg_ed + hh_income + cult_act + domestic_hwork + (1|municipality), data = master_2002_banks, family = 'binomial')
+print(f6, corr = FALSE)
+```
+
+```{r}
+plot(fitted(f6), residuals(f6), xlab = "Fitted Values", ylab = "Residuals")
+abline(h = 0, lty = 2)
+```
+
+```{r}
+margin_eff1 <- ggpredict(f6, term = "banks")
+plot(margin_eff1)
+```
+
+```{r}
+margin_eff2 <- ggpredict(f6, term = "hh_income")
+plot(margin_eff2)
+```
+
+```{r}
+margin_eff3 <- ggpredict(f6, term = "age")
+plot(margin_eff3)
+```
+
+```{r}
+margin_eff4 <- ggpredict(f6, term = "hh_avg_ed")
+plot(margin_eff4)
+```
+
+```{r}
+margin_eff5 <- ggpredict(f6, term = "hours_sleep")
+plot(margin_eff5)
+```
