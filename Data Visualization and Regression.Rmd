@@ -1,4 +1,5 @@
 ---
+<<<<<<< HEAD
 title: "DATA VISUALIZATION AND REGRESSION"
 output: html_document
 ---
@@ -15,6 +16,33 @@ knitr::opts_chunk$set(echo = TRUE)
 ```{r}
 f1 <- lm(attend_school ~ banks, data = master_2002_banks)
 summary(f1) 
+=======
+title: "DATA VISUALIZATION"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+View(master_2002_banks)
+```
+
+```{r}
+my_plot <- ggplot(master_2002,aes(speed,dist)) + geom_point()
+my_plot
+```
+
+
+
+
+
+## Bivariate OLS regression
+```{r}
+f1 <- lm(attend_school ~ banks, data = master_2002_banks)
+summary(f1)
+>>>>>>> d35fc7ea782e29e366c8104db2a06dd70722b5a3
 ```
 
 ```{r}
@@ -22,6 +50,7 @@ library(ggplot2)
 ```
 
 ```{r}
+<<<<<<< HEAD
 ggplot(master_2002_banks, aes(x = banks, y = attend_school)) +  
   geom_point() + 
   stat_smooth(method = "lm", col = "red")
@@ -40,11 +69,28 @@ summary(f2)
 ```
 
 ## Linear regression allowing for the effect of banks to be different by age (convert age to dummies and create the proper interactions)
+=======
+ggplot(master_2002_banks, aes(x = banks, y = attend_school)) + 
+  geom_point() +
+  stat_smooth(method = "lm", col = "red")
+```
+
+## OLS regression with control variables 
+```{r}
+f2 <- lm(attend_school ~ banks + age + hh_avg_ed + hh_income + cult_act + domestic_hwork, data = master_2002_banks)
+summary(f2)
+```
+
+## Linear regression allowing for the effect of banks to be different by age (convert age to dummies and create the proper interactions)
+
+
+>>>>>>> d35fc7ea782e29e366c8104db2a06dd70722b5a3
 ```{r}
 install.packages("sjPlot")
 install.packages("sjmisc")
 ```
 
+<<<<<<< HEAD
 ```{r}
 library(sjPlot)
 library(sjmisc)
@@ -55,6 +101,32 @@ summary(f3)
 plot_model(f3, type = "pred", terms = c("hh_income", "age"))
 ```
 
+=======
+
+```{r}
+library(sjPlot)
+library(sjmisc)
+data(master_2002_banks)
+
+# fit model with interaction
+f3 <- lm(attend_school ~ banks + hh_avg_ed + hh_income + cult_act + domestic_hwork + age*hh_income, data = master_2002_banks)
+
+summary(f3)
+
+plot_model(f3, type = "pred", terms = c("hh_income", "age"))
+```
+
+
+```{r}
+f4 <- lm(attend_school ~ banks*age*hh_income + hh_avg_ed + cult_act + domestic_hwork, data = master_2002_banks)
+
+summary(f4)
+
+plot_model(f4, type = "pred", terms = c("hh_income", "age", "banks"))
+```
+
+
+>>>>>>> d35fc7ea782e29e366c8104db2a06dd70722b5a3
 ## logit regression
 ```{r}
 install.packages("margins")
@@ -66,12 +138,19 @@ library(ggeffects)
 library("lme4")
 ```
 
+<<<<<<< HEAD
+=======
+
+>>>>>>> d35fc7ea782e29e366c8104db2a06dd70722b5a3
 ```{r}
 f5 <- glmer(attend_school ~ banks + (1|municipality), data = master_2002_banks, family = 'binomial')
 print(f5, corr = FALSE)
 summary(f5)
 ```
+<<<<<<< HEAD
 
+=======
+>>>>>>> d35fc7ea782e29e366c8104db2a06dd70722b5a3
 ```{r}
 plot(fitted(f5), residuals(f5), xlab = "Fitted Values", ylab = "Residuals")
 abline(h = 0, lty = 2)
@@ -79,16 +158,26 @@ abline(h = 0, lty = 2)
 
 
 ```{r}
+<<<<<<< HEAD
 f6 <- glmer(attend_school ~ banks + age + hours_sleep + hh_avg_ed + hh_income + cult_act + domestic_hwork + (1|municipality), data = master_2002_banks, family = 'binomial')
 print(f6, corr = FALSE)
 ```
 
+=======
+f6 <- glmer(attend_school ~ banks + age + hh_avg_ed + hh_income + cult_act + domestic_hwork + (1|municipality), data = master_2002_banks, family = 'binomial')
+print(f5, corr = FALSE)
+```
+
+## turn age into numeric
+
+>>>>>>> d35fc7ea782e29e366c8104db2a06dd70722b5a3
 ```{r}
 plot(fitted(f6), residuals(f6), xlab = "Fitted Values", ylab = "Residuals")
 abline(h = 0, lty = 2)
 ```
 
 ```{r}
+<<<<<<< HEAD
 margin_eff1 <- ggpredict(f6, term = "banks")
 plot(margin_eff1)
 ```
@@ -112,3 +201,22 @@ plot(margin_eff4)
 margin_eff5 <- ggpredict(f6, term = "hours_sleep")
 plot(margin_eff5)
 ```
+=======
+library(MuMIn)
+```
+
+```{r}
+r.squaredGLMM(f5)
+```
+
+```{r}
+margin_eff <- ggpredict(f5, term = "banks")
+margin_eff
+```
+
+```{r}
+plot(margin_eff)
+```
+
+
+>>>>>>> d35fc7ea782e29e366c8104db2a06dd70722b5a3
