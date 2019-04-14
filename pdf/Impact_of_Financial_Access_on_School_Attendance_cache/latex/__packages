@@ -14,3 +14,7 @@ forcats
 readxl
 pdp
 bindrcpp
+lattice
+caret
+factoextra
+FactoMineR

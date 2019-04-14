@@ -1,0 +1,42 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+
+
+```{r}
+install.packages("skimr")
+install.packages("dplyr")
+```
+
+```{r}
+require(skimr)
+require(dplyr)
+require(tidyverse)
+```
+
+#check the distribution
+```{r}
+data <- load(file='master_2002.Rdata')
+```
+
+```{r}
+
+skimr::skim(master_2002)
+```
+
+#Visualize the distribution
+```{r,fig.height=20,fig.width=5}
+master_2002 %>% 
+  select_if(is.character) %>% 
+  gather(var,val) %>% 
+  ggplot(aes(val)) + scale_y_log10() +
+  geom_bar() +
+  facet_wrap(~var,scales="free",ncol=1) +
+  coord_flip()
+```
+
+
+
+
