@@ -1,0 +1,1480 @@
+---
+title: "The Impact of Financial Access on School Attendance in Mexico"
+author: "Group No. 5"
+date: "April 29, 2019"
+header-includes:
+    \usepackage{setspace}\doublespacing
+output: pdf_document
+fontsize: 12pt
+documentclass: article
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, include=FALSE, warning=F,error = F,message = F)
+```
+```{r, cache=TRUE}
+require("recipes")
+require("haven")
+library("here")
+require("tidyverse")
+require("readxl")
+require("pdp")
+require("caret")
+require("factoextra")
+require("FactoMineR")
+```
+
+\textbf{Members:}\
+\begin{itemize}
+  \itemsep-.6em
+  \item Hector Hernandez Heimpel (NetID: hh744) - email: hh744@georgetown.edu\
+  \item Tingjie  Meng (NetID: tm1305) - email: tm1305@georgetown.edu\
+  \item Liumin Chen (NetID: lc1077) - email: lc1077@georgetown.edu\
+\end{itemize}
+\textbf{Github Repository:} https://github.com/hheimpel/Group-No.-5 
+
+\newpage
+
+#Problem Statement and Background
+
+School attendance has been considered important to economic growth because of its association with productivity. The general idea behind this is that people with higher education have higher income, as evidenced by Ashenfelter (1997). There are many factors that could affect why a child attends or does not attend school. In particular, financial access could affect schooling through access to credit and savings with better conditions. According to Becker (1975), by limiting the incentives and capacity to invest in human capital, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development. In Aportela (1998) it was found that access to financial services increases savings on low-income people. What this could imply is that with better access to financial instruments that allow people to save money, a household head may better prepare for the expenses that will have to be made when the child goes to school. In other words, by having access to these financial services a household head may be able to ask for a credit in order to meet their basic needs instead of putting a child to work.
+
+The main question we are concerned with is whether access to banking services has an effect on school attendance for children under 15 and over 6 years of age. According to Augsburg, Harmgart and Meghir (2012) there are several channels through which microfinance can impact education. One possibility is that microfinance through the loan and the expanded business activity alleviates liquidity constraints and leads to an expansion of school attendance and a decrease in child labor. With a sufficiently low interest rate and a sufficiently high rise in productivity thanks to schooling, households likely will decide to attend school because the financial market allows them to smooth out their consumption, whereas income may have a sudden jump due to the differences in productivity that arise due to schooling. 
+
+There are multiple data sets which will comprise the source of our analysis. The main source for the outcome `attend_school` and the control characteristics are in the Mexican Family Life Survey (ENNVIH). The ENNVIH is a set of multiple books each containing a set of data sets. We used the control book for 2002 (M X F L S - Book C). This book contains several control characteristics at an individual level (i.e. marital status, maximum education grade, etc.) and at a household level (i.e. proximity to water source, type of floor, etc.). The second book of data sets are contained in book V for 2002 (M X F L S - Book V). This book contains several characteristics at an individual level for children under 15 years of age. They include but are not limited to, child employment, child health characteristics and more. The last group of data sets is contained in the Bank Operational Information from the Comision Nacional Bancaria y de Valores (CNBV). This data set contains information about the locations of bank branches in 2002 for Mexico.
+
+#Methods and Research Design
+
+The first step consisted of creating a unique data set which contained all of the pertinent covariates from the multiple data sets. Extensive use of the `tidyverse` was necessary to recode, reorganize, merge and tidy the data.
+One issue with the `tidyverse` was the difficulty in running loops through the `mutate` function and creating functions which included `mutate`; however, the issue had a solution within the same package. Once the unique data set was constructed by merging all of the data sets in (M X F L S - Book C) & (M X F L S - Book V) contained over 90 covariates —even after removing redundant variables, variables with excessive percentage of missing values and containing little useful information— we used Principal Component Analysis (PCA) to reduce the number of covariates substantively; the `FactoMineR` and `factoextra` packages were used for this purpose. This was a labour intensive work and one suggestion could be having as output the suggested variables to drop.
+
+Even after running PCA there were still a considerable amount of covariates. For this purpose we used Supervised Machine Learning techniques to explore which covariates were the most important in predicting `attend_school`. The idea behind this was to be able to eliminate covariates which didn't contribute much to the prediction of school attendance; by doing so, it would provide evidence (minimal as it may be) that the included covariates when running the regression to ascertain the effects of bank access on school attendance were enough to eliminate or minimize bias in the regression coefficients. We ran two models in order to do this, a random forest —modifying the number of covariates included as a tuning parameter— and a classification and Regression Tree (CART) —modifying the complexity parameter as a tuning parameter— and chose the one with highest specificity metric to obtain the list of covariates which were most important in predicting `attend_school`.
+
+#Tools
+
+##Constructing Data
+
+Manipulating the data and preparing it for analysis required a great deal of work; we briefly describe the process, the main tools used to clean the data and all of the manipulations done in order to obtain the final working data sets.
+
+We start by loading the control book for 2002 (M X F L S - Book C). Within the book there are four pertinent data sets to be used:
+
+1. `c_portad.dta`: contains the location of the households by State, Municipality and Locality. It further contains a variable indicating number of inhabitants in Locality. This is a Household level data set.
+2. `c_cv.dta`: contains physical characteristics of the household (i.e. whether it has a cooking room, a telephone, etc.). This is a Household level data set.
+3. `c_cvo.dta`: this data set extends the previous one with more physical characteristics of the households (i.e. the construcction materials, access to electricity, etc.). This is a household level data set.
+4. `c_ls.dta`: it contains control characteristics such as income, level of education, gender, among others. This is an individual level data set.
+
+Since the data sets were in `dta` form, the `haven` package was required to load them into the environment and the package `here` was used was well for reproducibility purposes. Furthermore, use of the `tidyverse` package was used extensively throughout the process \footnote{For further details as to the cleansing of the data check Appendix - Part 1 - M X F L S Book C.}. 
+
+
+```{r, echo=FALSE, cache=TRUE}
+#2002 Household data
+control_book <- read_dta(here("Data","hh02dta_bc","c_portad.dta"))
+dwell_char <- read_dta(here("Data","hh02dta_bc","c_cv.dta"))
+d_obs_char <- read_dta(here("Data","hh02dta_bc","c_cvo.dta"))
+indiv_control_vars <- read_dta(here("Data","hh02dta_bc","c_ls.dta"))
+```
+
+
+
+```{r, cache=TRUE}
+#Removing variables 
+#indiv_control_vars
+indiv_control_vars <- select(indiv_control_vars, -c(secuencia, ls00, ls02_1, ls12, ls03_1, ls03_21, ls03_22, ls06, ls07, ls08, ls11, ls13_1, ls15_1, ls16, ls18))
+
+#control_book
+control_book <- select(control_book, -c(ls, rel, reh, control, edad))
+```
+
+
+```{r, cache=TRUE}
+#Recoding values for interpretation indiv_control_vars
+#Gender
+indiv_control_vars <- indiv_control_vars %>%
+  mutate(ls04 = ifelse(ls04==1,"male",ifelse(ls04==3,"female",ls04)))
+
+#Relationship to HH head
+rel_HH_head <- c("HH_head", "Spouse/couple", "Son/daughter", "Step_son/daughter", "Son/daughter_in_law", "Father/Mother", "Father/Mother_in_law", "Brother/sister", "Brother/sister_in_law", "Grandkid", "Grandpa_ma", "Uncle/aunt", "Nephew/niece", "Cousin", "Worker", "Other")
+
+for (i in 1:16) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls05_1 = ifelse(ls05_1==i,rel_HH_head[i],ls05_1))
+}
+
+rm(rel_HH_head)
+
+#Live in HH
+indiv_control_vars <- mutate(indiv_control_vars, ls09=ifelse(ls09==3,0,ls09))
+
+#Marital Status
+marital <- c("Concubinage", "Separated", "Divorced", "Widowed", "Married", "Single")
+
+
+for (j in 1:6) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls10 = ifelse(ls10==j,marital[j],ls10))
+}
+
+rm(marital)
+```
+```{r, cache=TRUE}
+#Control Book
+control_book <- control_book %>%
+  mutate(estrato=ifelse(estrato==1,"urban",ifelse(is.na(estrato),estrato,"rural")))
+```
+
+
+```{r, cache=TRUE}
+#d_obs_char missing values
+d_obs_char_names <- names(d_obs_char)
+miss_tib <- tibble()
+for (x in d_obs_char_names) {
+  mis <- sum(is.na(d_obs_char[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(d_obs_char_names)
+miss_tib
+```
+
+
+```{r, cache=TRUE}
+#dwell_char missing values
+dwell_names <- names(dwell_char)
+miss_tib <- tibble()
+for (x in dwell_names) {
+  mis <- sum(is.na(dwell_char[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(dwell_names)
+miss_tib
+```
+
+
+```{r, cache=TRUE}
+#Removing variables with many missing values 
+#d_obs_char
+d_obs_char <- select(d_obs_char, -c(cvo03a, cvo03b, cvo03c, cvo03d, cvo03e, cvo03f))
+
+#dwell_char
+dwell_char <- select(dwell_char, c(folio, cv01_1, cv02_1, cv05, cv06, cv07, cv08_1, cv12, cv16))
+```
+
+
+
+```{r, cache=TRUE}
+#Merging
+master_household2002 <- left_join(control_book, d_obs_char, by = c("folio"))
+master_household2002 <- master_household2002 %>%
+  left_join(., dwell_char, by = c("folio")) %>%
+  left_join(indiv_control_vars,., by = c("folio")) 
+colnames(master_household2002) <- c("hhid", "individual_id", "age", "gender", "hh_status", "live_in_hh", "marital_status", "hh_income", "education_level", "state", "municipality", "community", "urban", "id_loc", "type_hh", "electricity", "material_floor", "material_wall", "material_roof", "telephone", "property_status", "cook_room", "sleep_kitchen", "rooms_sleep", "source_water","same_drink_wash_water", "toilet")
+
+#type_hh recode
+type_hh_r <- c("Mobile dwelling", "Warehouse used as a dwelling", "Room loft 12", "Room or house in a vicinity", "Building apartment/Vertical dept", "Sole House sharing walls", "Sole house/does not share walls", "Other")
+
+for (i in 1:8) 
+  {
+  master_household2002 <- mutate(master_household2002, type_hh = ifelse(type_hh==i,type_hh_r[i],type_hh))
+}
+
+rm(type_hh_r)
+
+#material floor recode
+material_floor_n <- c("Wood/slab stone/slab/carpet/covers", "Firm cement", "Soil", "Other")
+
+for (i in 1:4) 
+  {
+  master_household2002 <- mutate(master_household2002, material_floor = ifelse(material_floor==i,material_floor_n[i],material_floor))
+}
+
+rm(material_floor_n)
+
+#material wall recode
+
+mwr <- c("Concrete partition,brick, block", "Adobe", "Wood", "Asbestos", "metallic plate, fiberglass, plastic", "Embarro or bajareque", "Reedgrass/bamboo/shingle","Cardboard sheets", "Residue material","Stone", "Other")
+
+for (i in 1:10) 
+  {
+  master_household2002 <- mutate(master_household2002, material_wall = ifelse(material_wall==i,mwr[i],material_wall))
+}
+
+rm(mwr)
+
+#material roof recode
+mrr <- c("Polyurethane", "Concrete partition,brick, block", "Slate", "Asbestos", "bamboo", "metallic laminate", "Wood", "Cardboard", "Residue Material", "Other")
+
+for (i in 1:10) 
+  {
+  master_household2002 <- mutate(master_household2002, material_roof = ifelse(material_roof==i,mrr[i],material_roof))
+}
+
+rm(mrr)
+
+#Property Status
+pss <- c("Currently paying it", "Your own and fully paid", "Your own ejido/community land", "Borrowed/ given without
+payment", "Rented", "Other")
+
+for (i in 1:6) 
+  {
+  master_household2002 <- mutate(master_household2002, property_status = ifelse(property_status==i,pss[i],property_status))
+}
+
+rm(pss)
+
+#Source of water
+wss <- c("Decanter", "Tap water inside", "Tap water outside", "Water from a truck", "gathered", "Other")
+
+for (i in 1:6) 
+  {
+  master_household2002 <- mutate(master_household2002, source_water = ifelse(source_water==i,wss[i],source_water))
+}
+
+rm(wss)
+
+#Dummies: Electricity, Telephone, cook_room, sleep_kitchen, same_drink_wash_water, toilet
+master_household2002 <- master_household2002 %>%
+  mutate(electricity=ifelse(electricity==3,0,electricity)) %>%
+  mutate(telephone=ifelse(telephone==3,0,telephone)) %>%
+  mutate(cook_room=ifelse(cook_room==3,0,cook_room)) %>%
+  mutate(sleep_kitchen=ifelse(sleep_kitchen==3,0,sleep_kitchen)) %>%
+  mutate(same_drink_wash_water=ifelse(same_drink_wash_water==3,0,same_drink_wash_water)) %>%
+  mutate(toilet=ifelse(toilet==3,0,toilet))
+```
+
+
+```{r, cache=TRUE}
+#creating average household adult (older than 15) member education
+hh_avg_educ <- tibble(hh_avg_ed = NA)
+aux <- master_household2002 %>%
+  cbind(.,hh_avg_educ) %>% 
+  mutate(adult=ifelse(age>15,1,ifelse(15 >= age,0,age))) %>%
+  filter(adult==1) %>%
+  group_by(hhid, adult) %>%
+  mutate(hh_avg_ed=mean(education_level, na.rm=TRUE),education_level) %>%
+  ungroup(.) %>%
+  select(c(hhid,hh_avg_ed)) %>%
+  arrange(hhid,desc(hh_avg_ed)) %>%
+  distinct(hhid, .keep_all =TRUE)
+
+master_household2002 <- left_join(master_household2002,aux)
+master_household2002 <- select(master_household2002,-c("education_level"))
+rm(aux)
+```
+
+```{r, cache=TRUE}
+#Household combined Income
+master_household2002_1 <- master_household2002 %>%
+  group_by(hhid) %>%
+  summarise(hh_income = sum(hh_income, na.rm=TRUE))
+
+master_household2002 <- master_household2002 %>%
+  select(-c(hh_income)) %>%
+  left_join(.,master_household2002_1, by=c("hhid"))
+rm(master_household2002_1)
+```
+
+```{r, cache=TRUE}
+master_household2002_1 <- master_household2002 %>%
+  filter(hh_status == "HH_head") %>%
+  select(hhid, marital_status) %>%
+  left_join(master_household2002,., by = c("hhid"))
+
+master_household2002 <- select(master_household2002_1, -c("marital_status.x"))
+```
+
+```{r, cache=TRUE}
+master_household2002 <- filter(master_household2002, age>5, age<15)
+rm(control_book,d_obs_char,dwell_char, hh_avg_educ,indiv_control_vars,master_household2002_1,miss_tib)
+```
+
+We then proceeded to load individual level data for children by loading the book V for 2002 (M X F L S - Book V). Within the book there are six pertinent data sets to be used \footnote{For further details regarding the wrangling of these data sets check Appendix - Part 1 - M X F L S - Book V.}:
+
+1. `v_edna.dta`: contains information regarding children's education.
+2. `v_emn.dta`: contains information regarding child labor.
+3. `v_cen.dta`: contains information regarding outpatient utilization for children.
+4. `v_atn.dta`: contains information regarding time allocation for children.
+5. `v_esn.dta`: contains information regarding overall children's health.
+6. `v_hsn.dta`: contains information regarding inpatient utilization for children.
+
+
+
+```{r, echo=FALSE, cache=TRUE}
+#2002 Children under 15 data
+ch_education <- read_dta(here("Data","hh02dta_b5","v_edna.dta"))
+ch_employment <- read_dta(here("Data","hh02dta_b5","v_emn.dta"))
+ch_outp_ut <- read_dta(here("Data","hh02dta_b5","v_cen.dta"))
+ch_t_alloc <- read_dta(here("Data","hh02dta_b5","v_atn.dta"))
+ch_health <- read_dta(here("Data","hh02dta_b5","v_esn.dta"))
+ch_inp_ut <- read_dta(here("Data","hh02dta_b5","v_hsn.dta"))
+```
+
+
+```{r, cache=TRUE}
+#Missing values ch_education
+ched_names <- names(ch_education)
+miss_tib <- tibble()
+for (x in ched_names) {
+  mis <- sum(is.na(ch_education[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(ched_names)
+miss_tib
+```
+
+```{r, cache=TRUE}
+#Missing values ch_employment
+ched_names <- names(ch_employment)
+miss_tib <- tibble()
+for (x in ched_names) {
+  mis <- sum(is.na(ch_employment[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(ched_names)
+miss_tib
+```
+```{r, cache=TRUE}
+#Missing values ch_health
+ched_names <- names(ch_health)
+miss_tib <- tibble()
+for (x in ched_names) {
+  mis <- sum(is.na(ch_health[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(ched_names)
+miss_tib
+```
+```{r, cache=TRUE}
+#Missing values ch_t_alloc
+ched_names <- names(ch_t_alloc)
+miss_tib <- tibble()
+for (x in ched_names) {
+  mis <- sum(is.na(ch_t_alloc[,x]))
+  mis_vals <- tibble(var=x,m_values=mis)
+  miss_tib <- bind_rows(miss_tib, mis_vals)
+ rm(mis)
+ rm(mis_vals)
+}
+rm(ched_names)
+miss_tib
+```
+
+```{r, cache=TRUE}
+#Removing redundant variables or with many missing values and renaming them
+ch_education <- ch_education %>%
+  select(folio,ls,edn01,edn01a,edn02,edn03)
+colnames(ch_education) <- c("hhid","individual_id","indig_language","older_5","s_spanish","attend_school")
+
+ch_employment <- ch_employment %>%
+  select(folio,ls,emn01a,emn02,emn04)
+colnames(ch_employment) <- c("hhid", "individual_id", "work_1hr", "work_fam_bus", "work_ever")
+
+ch_health <- ch_health %>%
+  select(folio,ls,esn01)
+colnames(ch_health) <- c("hhid", "individual_id", "health_level")
+
+ch_outp_ut <- ch_outp_ut %>%
+  select(folio,ls,cen01)
+colnames(ch_outp_ut) <- c("hhid", "individual_id", "doctor_visit")
+
+ch_inp_ut <- ch_inp_ut %>%
+  select(folio,ls,hsn01)
+colnames(ch_inp_ut) <- c("hhid", "individual_id", "hospitalized")
+
+ch_t_alloc <- ch_t_alloc %>%
+  select(folio, ls, atn01a:atn01i, atn03)
+colnames(ch_t_alloc) <- c("hhid", "individual_id", "cult_act", "lessons", "watch_tv", "domestic_hwork", "play_outside", "care_elderly", "carried_firewood", "carried_water", "agric_activity", "hours_sleep")
+
+#Merging data sets
+child_master2002 <- left_join(ch_education,ch_employment, by = c("hhid","individual_id")) 
+child_master2002 <- child_master2002 %>%
+  left_join(.,ch_health, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_inp_ut, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_outp_ut, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_t_alloc, by = c("hhid", "individual_id"))
+```
+
+```{r, cache=TRUE}
+#Recoding dummies
+dummies_ch <- names(child_master2002)
+dummies_ch <- dummies_ch[c(3:9, 11:22)]
+for (x in dummies_ch) {
+  x1 <- as.name(x)
+  child_master2002 <- mutate(child_master2002, !! x1 := ifelse(!! x1 == 3 | !!x1 == 2,0,!! x1))
+}
+```
+```{r, cache=TRUE}
+child_master2002 <- filter(child_master2002, older_5==1) %>%
+  select(-c(older_5))
+rm(ch_education,ch_employment,ch_health,ch_inp_ut,ch_outp_ut,ch_t_alloc,miss_tib)
+```
+
+To have the working master data set we merged both of the master data sets from book C and book V. Lastly, we imputed household level missing variables (missing observations at a household level will be substituted for whichever value or characteristic other members of the household have).
+
+Lastly, from an xls spreadsheet in the Comision Nacional Bancaria y de Valores (CNBV) we loaded the data set called `BM_Operativa_200212.xls` using the `readxl` package; this data set contains the information about the number of bank branches per municipality in Mexico (with an exhaustive list of every bank authorized for operations in Mexico by the CNBV). Extensive string manipulations with the `stringr` package had to be done in order to make the data sets comparable with those in the previous sections. This was due to the fact that the locations were encoded as names as opposed to numbers so another data set called `Relacion_de_municipios_de_Mexico.xlsx`, which contains the relationship between municipalities names and their official corresponding numbers, was used\footnote{The CNBV data set contains an exhaustive list of bank branches, therefore municipalities not included in this data set do not have any bank branches; what this implies is that the missing values for the bank dummy when merging the ENNVIH data set and the CNBV data set are really values of zero.}.
+
+```{r, cache=TRUE}
+master_2002 <- left_join(child_master2002,master_household2002, by = c("hhid", "individual_id")) %>%
+  select(-c(live_in_hh))
+rm(master_household2002,child_master2002)
+```
+
+```{r, cache=TRUE}
+Mode <- function(x) {
+  ux <- unique(x) 
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+aux <- c("state", "municipality", "community", "urban", "id_loc", "type_hh", "electricity", "material_floor", "material_wall", "material_roof", "telephone", "property_status", "cook_room", "sleep_kitchen", "rooms_sleep", "source_water","same_drink_wash_water", "toilet", "hh_avg_ed",  "hh_income", "marital_status.y")
+
+master_2002 <- group_by(master_2002, by = hhid)
+
+for (x in aux) {
+x1 <- as.name(x)
+  master_2002 <- mutate(master_2002, !! x1 := ifelse(is.na(!! x1), Mode(!! x1), !! x1)) 
+}
+
+master_2002 <- ungroup(master_2002) %>%
+  select(-c(by))
+rm(aux)
+```
+
+
+```{r, echo=FALSE, cache=TRUE}
+#2005 Household data
+control_book <- read_dta(here("Data","hh05dta_bc","c_portad.dta"))
+dwell_char <- read_dta(here("Data","hh05dta_bc","c_cv.dta"))
+d_obs_char <- read_dta(here("Data","hh05dta_bc","c_cvo.dta"))
+indiv_control_vars <- read_dta(here("Data","hh05dta_bc","c_ls.dta"))
+
+#Removing variables 
+#indiv_control_vars
+indiv_control_vars <- select(indiv_control_vars, c(folio, ls, ls02_2, ls04, ls05_1, ls10, ls13_2, ls14))
+
+#control_book
+control_book <- select(control_book, -c(ls, catorcena, rel, reh, control, edad))
+
+#Recoding values for interpretation indiv_control_vars
+#Gender
+indiv_control_vars <- indiv_control_vars %>%
+  mutate(ls04 = ifelse(ls04==1,"male",ifelse(ls04==3,"female",ls04)))
+
+#Relationship to HH head
+rel_HH_head <- c("HH_head", "Spouse/couple", "Son/daughter", "Step_son/daughter", "Son/daughter_in_law", "Father/Mother", "Father/Mother_in_law", "Brother/sister", "Brother/sister_in_law", "Grandkid", "Grandpa_ma", "Uncle/aunt", "Nephew/niece", "Cousin", "Worker", "Other")
+
+for (i in 1:16) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls05_1 = ifelse(ls05_1==i,rel_HH_head[i],ls05_1))
+}
+
+rm(rel_HH_head)
+
+#Marital Status
+marital <- c("Concubinage", "Separated", "Divorced", "Widowed", "Married", "Single")
+
+
+for (j in 1:6) 
+  {
+  indiv_control_vars <- mutate(indiv_control_vars, ls10 = ifelse(ls10==j,marital[j],ls10))
+}
+
+rm(marital)
+
+#Control Book
+control_book <- control_book %>%
+  mutate(estrato=ifelse(estrato==1,"urban",ifelse(is.na(estrato),estrato,"rural")))
+
+#Removing variables with many missing values 
+#d_obs_char
+d_obs_char <- select(d_obs_char, -c(cvo03a, cvo03b, cvo03c, cvo03d, cvo03e, cvo03f))
+
+#dwell_char
+dwell_char <- select(dwell_char, c(folio, cv01_1, cv02_1, cv05, cv06, cv07, cv08_1, cv12, cv16))
+
+#Merging
+master_household2002 <- left_join(control_book, d_obs_char, by = c("folio"))
+master_household2002 <- master_household2002 %>%
+  left_join(., dwell_char, by = c("folio")) %>%
+  left_join(indiv_control_vars,., by = c("folio")) 
+colnames(master_household2002) <- c("hhid", "individual_id", "age", "gender", "hh_status", "marital_status", "hh_income", "education_level", "state", "urban", "locality", "id_loc", "municipality", "type_hh", "electricity", "material_floor", "material_wall", "material_roof", "telephone", "property_status", "cook_room", "sleep_kitchen", "rooms_sleep", "source_water","same_drink_wash_water", "toilet")
+
+#type_hh recode
+type_hh_r <- c("Mobile dwelling", "Warehouse used as a dwelling", "Room loft 12", "Room or house in a vicinity", "Building apartment/Vertical dept", "Sole House sharing walls", "Sole house/does not share walls", "Other")
+
+for (i in 1:8) 
+  {
+  master_household2002 <- mutate(master_household2002, type_hh = ifelse(type_hh==i,type_hh_r[i],type_hh))
+}
+
+rm(type_hh_r)
+
+#material floor recode
+material_floor_n <- c("Wood/slab stone/slab/carpet/covers", "Firm cement", "Soil", "Other")
+
+for (i in 1:4) 
+  {
+  master_household2002 <- mutate(master_household2002, material_floor = ifelse(material_floor==i,material_floor_n[i],material_floor))
+}
+
+rm(material_floor_n)
+
+#material wall recode
+
+mwr <- c("Concrete partition,brick, block", "Adobe", "Wood", "Asbestos", "metallic plate, fiberglass, plastic", "Embarro or bajareque", "Reedgrass/bamboo/shingle","Cardboard sheets", "Residue material","Stone", "Other")
+
+for (i in 1:10) 
+  {
+  master_household2002 <- mutate(master_household2002, material_wall = ifelse(material_wall==i,mwr[i],material_wall))
+}
+
+rm(mwr)
+
+#material roof recode
+mrr <- c("Polyurethane", "Concrete partition,brick, block", "Slate", "Asbestos", "bamboo", "metallic laminate", "Wood", "Cardboard", "Residue Material", "Other")
+
+for (i in 1:10) 
+  {
+  master_household2002 <- mutate(master_household2002, material_roof = ifelse(material_roof==i,mrr[i],material_roof))
+}
+
+rm(mrr)
+
+#Property Status
+pss <- c("Currently paying it", "Your own and fully paid", "Your own ejido/community land", "Borrowed/ given without
+payment", "Rented", "Other")
+
+for (i in 1:6) 
+  {
+  master_household2002 <- mutate(master_household2002, property_status = ifelse(property_status==i,pss[i],property_status))
+}
+
+rm(pss)
+
+#Source of water
+wss <- c("Decanter", "Tap water inside", "Tap water outside", "Water from a truck", "gathered", "Other")
+
+for (i in 1:6) 
+  {
+  master_household2002 <- mutate(master_household2002, source_water = ifelse(source_water==i,wss[i],source_water))
+}
+
+rm(wss)
+
+#Dummies: Electricity, Telephone, cook_room, sleep_kitchen, same_drink_wash_water, toilet
+master_household2002 <- master_household2002 %>%
+  mutate(electricity=ifelse(electricity==3,0,electricity)) %>%
+  mutate(telephone=ifelse(telephone==3,0,telephone)) %>%
+  mutate(cook_room=ifelse(cook_room==3,0,cook_room)) %>%
+  mutate(sleep_kitchen=ifelse(sleep_kitchen==3,0,sleep_kitchen)) %>%
+  mutate(same_drink_wash_water=ifelse(same_drink_wash_water==3,0,same_drink_wash_water)) %>%
+  mutate(toilet=ifelse(toilet==3,0,toilet))
+
+#creating average household adult (older than 15) member education
+hh_avg_educ <- tibble(hh_avg_ed = NA)
+aux <- master_household2002 %>%
+  cbind(.,hh_avg_educ) %>% 
+  mutate(adult=ifelse(age>15,1,ifelse(15 >= age,0,age))) %>%
+  filter(adult==1) %>%
+  group_by(hhid, adult) %>%
+  mutate(hh_avg_ed=mean(education_level, na.rm=TRUE),education_level) %>%
+  ungroup(.) %>%
+  select(c(hhid,hh_avg_ed)) %>%
+  arrange(hhid,desc(hh_avg_ed)) %>%
+  distinct(hhid, .keep_all =TRUE)
+
+master_household2002 <- left_join(master_household2002,aux)
+master_household2002 <- select(master_household2002,-c("education_level"))
+rm(aux)
+
+#Household combined Income
+master_household2002_1 <- master_household2002 %>%
+  group_by(hhid) %>%
+  summarise(hh_income = sum(hh_income, na.rm=TRUE))
+
+master_household2002 <- master_household2002 %>%
+  select(-c(hh_income)) %>%
+  left_join(.,master_household2002_1, by=c("hhid"))
+rm(master_household2002_1)
+
+master_household2002_1 <- master_household2002 %>%
+  filter(hh_status == "HH_head") %>%
+  select(hhid, marital_status) %>%
+  left_join(master_household2002,., by = c("hhid"))
+
+master_household2002 <- select(master_household2002_1, -c("marital_status.x"))
+
+master_household2002 <- filter(master_household2002, age>5, age<15)
+rm(control_book,d_obs_char,dwell_char, hh_avg_educ,indiv_control_vars,master_household2002_1,miss_tib)
+
+#2002 Children under 15 data
+ch_education <- read_dta(here("Data","hh02dta_b5","v_edna.dta"))
+ch_employment <- read_dta(here("Data","hh02dta_b5","v_emn.dta"))
+ch_outp_ut <- read_dta(here("Data","hh02dta_b5","v_cen.dta"))
+ch_t_alloc <- read_dta(here("Data","hh02dta_b5","v_atn.dta"))
+ch_health <- read_dta(here("Data","hh02dta_b5","v_esn.dta"))
+ch_inp_ut <- read_dta(here("Data","hh02dta_b5","v_hsn.dta"))
+
+#Removing redundant variables or with many missing values and renaming them
+ch_education <- ch_education %>%
+  select(folio,ls,edn01,edn01a,edn02,edn03)
+colnames(ch_education) <- c("hhid","individual_id","indig_language","older_5","s_spanish","attend_school")
+
+ch_employment <- ch_employment %>%
+  select(folio,ls,emn01a,emn02,emn04)
+colnames(ch_employment) <- c("hhid", "individual_id", "work_1hr", "work_fam_bus", "work_ever")
+
+ch_health <- ch_health %>%
+  select(folio,ls,esn01)
+colnames(ch_health) <- c("hhid", "individual_id", "health_level")
+
+ch_outp_ut <- ch_outp_ut %>%
+  select(folio,ls,cen01)
+colnames(ch_outp_ut) <- c("hhid", "individual_id", "doctor_visit")
+
+ch_inp_ut <- ch_inp_ut %>%
+  select(folio,ls,hsn01)
+colnames(ch_inp_ut) <- c("hhid", "individual_id", "hospitalized")
+
+ch_t_alloc <- ch_t_alloc %>%
+  select(folio, ls, atn01a:atn01i, atn03)
+colnames(ch_t_alloc) <- c("hhid", "individual_id", "cult_act", "lessons", "watch_tv", "domestic_hwork", "play_outside", "care_elderly", "carried_firewood", "carried_water", "agric_activity", "hours_sleep")
+
+#Merging data sets
+child_master2002 <- left_join(ch_education,ch_employment, by = c("hhid","individual_id")) 
+child_master2002 <- child_master2002 %>%
+  left_join(.,ch_health, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_inp_ut, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_outp_ut, by = c("hhid","individual_id")) %>%
+  left_join(.,ch_t_alloc, by = c("hhid", "individual_id"))
+
+dummies_ch <- names(child_master2002)
+dummies_ch <- dummies_ch[c(3:9, 11:22)]
+for (x in dummies_ch) {
+  x1 <- as.name(x)
+  child_master2002 <- mutate(child_master2002, !! x1 := ifelse(!! x1 == 3 | !!x1 == 2,0,!! x1))
+}
+
+child_master2002 <- filter(child_master2002, older_5==1) %>%
+  select(-c(older_5))
+rm(ch_education,ch_employment,ch_health,ch_inp_ut,ch_outp_ut,ch_t_alloc,miss_tib)
+
+master_household2002 <- master_household2002 %>%
+  mutate(hhid = as.numeric(hhid)) %>%
+  mutate(individual_id = as.numeric(individual_id))
+
+master_2005 <- left_join(child_master2002,master_household2002, by = c("hhid", "individual_id"))
+rm(master_household2002,child_master2002)
+
+aux <- c("state", "urban", "locality", "id_loc", "municipality", "type_hh", "electricity", "material_floor", "material_wall", "material_roof", "telephone", "property_status", "cook_room", "sleep_kitchen", "rooms_sleep", "source_water","same_drink_wash_water", "toilet", "hh_avg_ed",  "hh_income", "marital_status.y")
+
+Mode <- function(x) {
+  ux <- unique(x) 
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+master_2005 <- group_by(master_2005, by = hhid)
+
+for (x in aux) {
+x1 <- as.name(x)
+  master_2005 <- mutate(master_2005, !! x1 := ifelse(is.na(!! x1), Mode(!! x1), !! x1)) 
+}
+
+master_2005 <- ungroup(master_2005) %>%
+  select(-c(by))
+rm(aux)
+```
+
+##Exploratory Analysis
+
+###School Attendance Distribution
+
+In our exploratory analysis, we started by simply looking at School Attendance distribution by age in 2002:
+
+```{r, fig.align = "center", cache = TRUE, fig.width = 4, fig.height=3, include=TRUE}
+sch_age_plot <- group_by(master_2002, age) %>%
+  summarise(avg_school = mean(attend_school, na.rm=TRUE)) %>% 
+  ggplot(aes(x=age,y=avg_school)) +
+  geom_col(colour = "white", fill = "gray", alpha =.75) +
+  theme_minimal() +
+  labs(x="Age",
+       y="Relative Frequency",
+       title="Distribution of school attendance by age (2002)",
+       subtitle="Source: MXFLS 2002") +
+  coord_cartesian(ylim = c(.9, 1)) +
+  theme(plot.title=element_text(hjust=.5,size=10),
+        plot.subtitle=element_text(hjust=.5,size=8),
+        axis.title.x=element_text(size=8),
+        axis.title.y=element_text(size=8),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.minor.y=element_blank())
+
+sch_age_plot2005 <- group_by(master_2005, age) %>%
+  summarise(avg_school = mean(attend_school, na.rm = TRUE)) %>% 
+  ggplot(aes(x=age,y=avg_school)) +
+  geom_col(colour = "white", fill = "gray", alpha =.75) +
+  theme_minimal() +
+  labs(x="Age",
+       y="Relative Frequency",
+       title="Distribution of school attendance by age (2005)",
+       subtitle="Source: MXFLS 2005") +
+  theme(plot.title=element_text(hjust=.5,size=10),
+        plot.subtitle=element_text(hjust=.5,size=8),
+        axis.title.x=element_text(size=8),
+        axis.title.y=element_text(size=8),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.minor.y=element_blank())
+
+sch_age_plot
+rm(sch_age_plot, sch_age_plot2005)
+```
+
+It is important to notice the scale on the y-axis, for every age group children are attending school at rates of over 90 percent —this influenced our goodness of fit measure in the supervised learning section—. This graph is important to keep in mind because the estimated impact of access to banks will be stratified by age to allow for the effect to be different by different groups of age. \footnote{To illustrate how this could have an impact on the aggregated or average effect (average across groups of age to be specific) refer to  Appendix - Part 2 - Exploratory Analysis - Sample Age Distribution.}
+
+###Principal Component Analysis (PCA)
+
+Since we have many covariates in our data set, we looked at the correlation matrix to detect any potential problems with the variables \footnote{To look at the correlation plot refer to Appendix - Part 2 - Correlation Matrix}. We looked at numeric variables and dummies first and there were two variables which seem to have issues and it's intuitive to ascertain why. The correlation between the variable `work_1hr` indicating whether the child worked at least one hour the past week, `work_ever` which indicates whether the child has ever worked and `work_fam_bus` is missing; this could be due to the fact that they seem to be measuring the same thing. There seem to be fairly small numbers for the correlation of variables; however, this is not the entirety of the story, underlying structures could be hidden. 
+
+To try to find underlying hidden structures in the data, we resorted to principal component analysis to see if the number of variables in the data could be reduced; for this purpose we used the `factoextra` and `FactoMineR` packages. The first step would be transforming categorical variables into dummy variables; however, given the number of variables this would result in, we focus on numerical and dummy variables at first. The second step is removing identification variables and the third step is scaling the remaining variables\footnote{The results can be observed in Appendix - Part 3 - PCA - Continuous Variables}.
+
+Some very interesting results were observed in the first PCA analysis for continuous variables:
+
+1) The vertical dimension can almost be entirely classified by the variable `domestic_hwork` which refers to domestic work in the household.
+2) The horizontal dimension includes several household characteristics. This dimension seems to suggest something along the lines of a welfare measure.
+3) The variables `work_1hr`, `work_fam_bus`, `work_ever` and `care_elderly` are very close together and near the vertical dimension. This suggest that they are measuring the same work dimension.
+4) The variables `electricity`, `watch_TV` and `telephone` are close in space. This makes intuitive sense because to have either a telephone or a TV you must have electricity. 
+5) The variables `play outside` and `hours_sleep` seep opposite to the vertical dimension which seems to be something relating to work; this makes intuitive sense because likely children who do domestic work sleep less and play less.
+6) The variables `sleep_kitchen`, `same_drink_wash_water` and `toilet` are also very close in space. It makes sense because household where someone sleeps in the kitchen, the same water is used for washing and drinking and there are no toilets could be measuring something along the lines of household quality.
+7) `carried_firewood` and `carried_water` seem to be measuring the same thing, carrying a production input or something along these lines.
+8) The number of rooms to sleep `rooms_sleep` and `cook_room` which are in close opposite direction of variables in point 6. are also very close together. 
+
+We proceeded to filter out these variables (keeping a single one for reference) to condense our number of variables. The results are the following: 
+
+```{r, fig.align="center", fig.width=7, fig.height=3, cache=TRUE, include=TRUE}
+master_2002_num <- master_2002 %>%
+  select_if(is.numeric) %>%
+  select(c(domestic_hwork, agric_activity, cult_act, rooms_sleep, hh_avg_ed,
+           s_spanish, electricity, hours_sleep, toilet, health_level, indig_language))
+
+master_2002PCA <- PCA(master_2002_num, graph = FALSE)
+
+fviz_eig(master_2002PCA, addlabels = TRUE, geom = c("line"), linecolor = "steelblue") +
+  theme_minimal() +
+labs(x="Dimensions",
+      y="Percentage of Explained Variances",
+      title="Percentage of Explained Variances",
+      subtitle="Source: MXFLS 2002") +
+theme(plot.title=element_text(hjust=.5,size=10),
+        plot.subtitle=element_text(hjust=.5,size=8),
+        axis.title.x=element_text(size=8),
+        axis.title.y=element_text(size=8),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.minor.y=element_blank()) 
+  
+```
+
+The remaining dimensions have a very uniform percent of explained variance; the range for the maximum and minimum for the eigenvalues is (7.1%, 14.9%). This seems to suggest that we have reduced the dimensions for continuous variables as much as possible.
+
+We repeated the same principal component analysis (PCA) for categorical variables\footnote{Refer to Appendix - Part 3 - Categorical Variables}. The `caret` package was used to transform categorical variables into dummies to make the analysis possible. Given the many categorical variables and the many categories within those variables we first analyzed those categories which we intuitively thought would be most related. The first category was "physical characteristics of the household" (i.e. material of the walls, materials of the floor, access to water, etc.). From rounds one through five we applied the PCA for each categorical variable in the broader category of physical characteristics of the household and eliminated the variables which provided the least in terms of percentage of explained variance; for round six we compiled all of the relevant categories from the previous rounds and ran PCA again; finally, in round 7 we kept the six categories for physical characteristics of the household which provided the most in terms of explained variance. The same process was repeated for categorical variables `marriage_status` (i.e. single, married, divorced, etc.) and `property_status` (i.e. rent, own, communal land, etc.). Lastly, from over 90 covariates in the totality of the data set we managed to reduce the number to 30 through this process.
+
+```{r, cache=TRUE}
+dmy <- dummyVars("~ .", data = master_2002, fullRank = TRUE) 
+master_2002_clean <- data.frame(predict(dmy, newdata = master_2002)) 
+
+master_2002_clean <- master_2002_clean %>%
+  select(c(hhid,individual_id, attend_school, age, state, municipality,
+           attend_school, domestic_hwork, agric_activity, cult_act,rooms_sleep, hh_avg_ed,
+           s_spanish, electricity, hours_sleep, toilet, health_level,
+           indig_language, carried_water, hh_income, material_roofPolyurethane,
+           material_floorWood.slab.stone.slab.carpet.covers,
+           material_roofConcrete.partition.brick..block, material_wallConcrete.partition.brick..block,
+           material_floorSoil, material_roofCardboard, property_statusOther, property_statusRented,
+           property_statusYour.own.and.fully.paid, property_statusYour.own.ejido.community.land,
+           marital_status.yMarried, marital_status.ySingle, marital_status.yWidowed))
+
+rm(dmy)
+```
+
+
+##Supervised Learning
+Once the covariates were significantly reduced we proceeded to build a supervised learning model to ascertain which covariates had the most predictive power for school attendance.  Given that the rate of school attendance is over 90%, our measure of choice for the goodness of fit of the model was \textbf{Specificity} (of the actual true negatives, how many were correctly classified). The first step was creating a training data set and a testing data set and rescaling continuous variables by applying logarythms.
+
+```{r, cache=TRUE}
+#Training data set
+set.seed(1991)
+index <- runif(nrow(master_2002_clean),0,1)
+master_2002_train <- master_2002_clean %>%
+  cbind(index) %>%
+  filter(index<=.8) %>%
+  select(-c(hhid, individual_id, index, state, municipality))
+
+#Test data set
+master_2002_test <- master_2002_clean %>%
+  cbind(index) %>%
+  filter(index>.8) %>%
+  select(-c(hhid, individual_id, index, state, municipality))
+
+convert_log <- function(data, variable){ 
+  variable <- enquo(variable) 
+  vname <- paste0(quo_name(variable))
+  mutate(data, !! vname := log(!! variable + 1))
+}
+
+#Logs to train data
+master_2002_train <- master_2002_train %>%
+  convert_log(rooms_sleep) %>%
+  convert_log(hh_avg_ed) %>%
+  convert_log(hours_sleep) %>%
+  convert_log(hh_income) %>%
+  convert_log(age)
+
+#Logs to test data
+master_2002_test <- master_2002_test %>%
+  convert_log(rooms_sleep) %>%
+  convert_log(hh_avg_ed) %>%
+  convert_log(hours_sleep) %>%
+  convert_log(hh_income) %>%
+  convert_log(age)
+
+```
+The next step consisted of preparing the data set by normalizing continuous variables (categorical variables were previously converted to dummies). Furthermore, missing values were imputed (using the mode for dummy variables and the median for continuous variables). Next, we set the number of cross-validations to 5 and since this is a classification problem, the proper settings were established. The `recipes` package was necessary for these steps.
+
+```{r, cache=TRUE}
+#Recipe
+recipe <- recipe(attend_school~., master_2002_train) %>%
+  step_range(rooms_sleep, hh_avg_ed, hours_sleep, hh_income, age) %>%
+  step_medianimpute(all_numeric()) %>%
+  prep()
+
+master_2002_train_norm <- master_2002_train %>%
+  bake(recipe, .) %>%
+  mutate(attend_school=ifelse(attend_school==1,"Attend", "Not_Attend"))
+  
+master_2002_test_norm <- master_2002_test %>%
+  bake(recipe, .) %>%
+  mutate(attend_school=ifelse(attend_school==1,"Attend", "Not_Attend"))
+```
+
+```{r, cache=TRUE}
+#Cross validation and control settings
+set.seed(1991)
+folds <- createFolds(master_2002_train_norm$attend_school, k = 5)
+control_conditions <- trainControl(method='cv',
+  number=5,
+  summaryFunction = twoClassSummary,
+  classProbs = TRUE,
+  index = folds
+  )
+```
+We then ran a CART model and tuned the complexity parameter until we found results that converged to a maximum level of specificity\footnote{For more details check Appendix - Part 4 - CART Model.}. The second model we ran was a random forest, the packages `ranger` and `e1071` were needed for this purpose. The tuning parameter was `mtry` which states how many predictors the model can take\footnote{For details check Appendix - Part 4 - Forest Model.}. More details are provided in following sections, but in general we reduced 30 covariates to a total of 9.
+```{r, cache=TRUE}
+cart_parameters <- expand.grid(cp=c(.000005,.0005,.01))
+mod_cart <-
+train(attend_school~.,
+data=master_2002_train_norm,
+method = "rpart",
+metric = "Specificity",
+tuneGrid = cart_parameters,
+trControl = control_conditions
+)
+```
+
+```{r, cache=TRUE}
+forest_parameters <- expand.grid(data.frame(mtry=c(3,5,10,15),splitrule="gini",min.node.size=10))
+                                              
+mod_forest <- train(attend_school ~ .,
+  data=master_2002_train_norm,
+  method = "ranger",
+  metric = "Specificity",
+  importance = "impurity",
+  tuneGrid = forest_parameters,
+  trControl = control_conditions
+)
+```
+
+
+```{r, echo=FALSE, cache=TRUE}
+#Sucursales Azteca
+azteca_2002 <- read_xls(here("Data","BM_Operativa_200212.xls"))
+```
+```{r, cache=TRUE}
+#Municipalities names and codes
+mpios <- read_xlsx(here("Data","Relacion_de_municipios_de_Mexico.xlsx"))
+
+#Removing accents (so we can merge)
+colnames(mpios) <- c("mpio","mpio_str")
+mpios$mpio_str <- iconv(mpios$mpio_str, from = 'UTF-8', to = 'ASCII//TRANSLIT')
+
+#Adding edo_str column
+mpios <- mpios %>%
+  rbind(c(NA,"AGUASCALIENTES"),.) %>%
+  mutate(.,edo_str=NA)
+for (i in 1:nrow(mpios)) {
+  if (is.na(mpios$mpio[i])) {
+    mpios$edo_str[i]=mpios$mpio_str[i]
+  }else{
+    mpios$edo_str[i]=mpios$edo_str[i-1]
+  }
+}
+```
+```{r, cache=TRUE}
+#Preparing and cleaning azteca 2002 data
+azteca_2002 <- select(azteca_2002,c(1:3,5:36))
+aux <- c()
+  for (i in 1:35) {
+    aux[i] = azteca_2002[1,i]
+  }
+aux[[1]] <- "edo_str"
+aux[[2]] <- "munic_cnbv_code"
+aux[[3]] <- "mpio_str"
+colnames(azteca_2002) <- aux
+```
+```{r, cache=TRUE}
+#Dropping observations with missing location
+azteca_2002 <- azteca_2002 %>%
+  filter(., !is.na(munic_cnbv_code))
+
+#Filling State missing values
+for (i in 1:nrow(azteca_2002)) {
+  if (is.na(azteca_2002[i,"edo_str"])) {
+    azteca_2002[i,"edo_str"]=azteca_2002[i-1,"edo_str"]
+    }else{
+      i
+  }
+}
+
+azteca_2002 <- filter(azteca_2002, edo_str!="Estado")
+```
+```{r, cache=TRUE}
+#Creating States Data Frame with number identification (per codebook instructions)
+by_edo_azt02 <- group_by(azteca_2002,edo_str)
+by_edo_azt02 <- summarise(by_edo_azt02, sum=mean(BANAMEX, na.rm=TRUE)) %>%
+  select(.,"edo_str") %>%
+  mutate(.,edo=NA)
+by_edo_azt02[3,2]=3
+by_edo_azt02[7,2]=5
+by_edo_azt02[9,2]=9
+by_edo_azt02[10,2]=10
+by_edo_azt02[11,2]=11
+by_edo_azt02[14,2]=14
+by_edo_azt02[15,2]=15
+by_edo_azt02[16,2]=16
+by_edo_azt02[17,2]=17
+by_edo_azt02[18,2]=19
+by_edo_azt02[19,2]=20
+by_edo_azt02[20,2]=21
+by_edo_azt02[24,2]=25
+by_edo_azt02[25,2]=26
+by_edo_azt02[30,2]=30
+by_edo_azt02[31,2]=31
+
+
+#Merging states number identification with azteca_2002
+azteca_2002 <- left_join(azteca_2002,by_edo_azt02,by="edo_str")
+
+#Repairing problems with keys to be able to merge
+by_edo_azt02CAPS <- by_edo_azt02 
+by_edo_azt02CAPS <- mutate(by_edo_azt02,edo_str=toupper(edo_str))
+by_edo_azt02CAPS$edo_str <- iconv(by_edo_azt02CAPS$edo_str, from = 'UTF-8', to = 'ASCII//TRANSLIT')
+by_edo_azt02CAPS[9,1]="CIUDAD DE MEXICO"
+by_edo_azt02CAPS[7,1]="COAHULIA"
+by_edo_azt02CAPS[15,1]="ESTADO DE MEXICO"
+by_edo_azt02CAPS[2,1]="BAJA CALIFORNIA"
+by_edo_azt02CAPS[28,1]="NAYARIT"
+
+#Checking if strings by state are called the same
+unique_edo <- unique(mpios$edo_str) 
+unique_edo <- tibble(edo_str = unique_edo) 
+key_problems <- anti_join(by_edo_azt02CAPS, unique_edo, "edo_str")
+
+#Merging State number to Municipalities
+mpios <- mpios %>% 
+  left_join(.,by_edo_azt02CAPS,by="edo_str") %>%
+  select(mpio,mpio_str,edo)
+```
+
+```{r, cache=TRUE}
+#Removing problematic strings to be able to merge
+azteca_2002 <- azteca_2002 %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "[:punct:]")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLOS")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLAS")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLA")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sEL")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sLOCALIDAD\\sDE")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\sMUNICIPIO\\sDE")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "CIUDAD")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\s")) 
+
+mpios <- mpios %>% 
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "[:punct:]")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "^LOS\\s")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "^LA\\s")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "^EL\\s")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "CIUDAD")) %>%
+  mutate(mpio_str=str_remove_all(mpio_str, pattern = "\\s")) 
+
+key_mpio_problem <- anti_join(azteca_2002,mpios,by=c("mpio_str","edo")) 
+
+```
+
+```{r, cache=TRUE}
+#Merging municipalities number
+azteca_2002 <-inner_join(azteca_2002, mpios, by=c("mpio_str","edo")) 
+azteca_2002 <- filter(azteca_2002,edo!=is.na(edo), mpio!=is.na(mpio))
+
+
+rm(aux, azteca_2002aux, by_edo_azt02, by_edo_azt02CAPS, key_mpio_problem, key_problems, mpios_aux, unique_edo)
+```
+```{r, cache=TRUE}
+#Renaming variables
+colnames(azteca_2002) <- c("edo_str","munic_cnbv_code","mpio_str","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland","edo","mpio")
+
+azteca_2002 <- select(azteca_2002, "edo_str","edo","mpio_str","mpio","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
+
+#Dropping if missing state (since they won't be in ENNVIH data sets)
+azteca_2002 <- filter(azteca_2002, edo!=is.na(edo))
+```
+```{r, cache=TRUE}
+#Changing digit strings to numeric
+azt_numvar_names <- c("edo","mpio","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
+for (x in azt_numvar_names) {
+  azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("as.double(",x,")"), x))
+}
+```
+```{r, cache=TRUE}
+#replacing missing values with zero
+for (x in azt_numvar_names) {
+  azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("ifelse(is.na(",x,"),0,",x,")"),x))
+}
+```
+```{r, cache=TRUE}
+azteca_2002 <- azteca_2002 %>%
+  mutate(banks = select(., amex:royal_bank_scotland) %>% apply(1, sum, na.rm=TRUE))
+```
+```{r, cache=TRUE}
+#Merge with original data set
+azteca_2002_m <- azteca_2002 %>%
+  select(state=edo,municipality=mpio,banks)
+
+master_2002_banks <- master_2002 %>%
+  select(hhid, individual_id, state, municipality, attend_school, age, hours_sleep,
+         hh_avg_ed, hh_income, cult_act, domestic_hwork)%>%
+  convert_log(hh_avg_ed) %>%
+  convert_log(hours_sleep) %>%
+  convert_log(hh_income) %>%
+  filter(state != is.na(state))
+  
+#Recipe for imputing missing values
+recipe2 <- recipe(attend_school~., master_2002_banks) %>%
+  step_range(hh_avg_ed, hours_sleep, hh_income) %>%
+  step_medianimpute(all_numeric()) %>%
+  prep()
+
+azteca_2002_g <- azteca_2002_m %>%
+  group_by(state, municipality) %>%
+  summarise(n = n(), banks = max(banks)) %>%
+  select(state, municipality, banks)
+
+master_2002_banks <- master_2002_banks %>%
+  bake(recipe2, .) %>%
+  left_join(., azteca_2002_g, by = c("state", "municipality")) %>%
+  mutate(banks = ifelse(state==9,42254,banks)) %>%
+  mutate(banks = ifelse(is.na(banks),0,1))
+
+```
+
+#Results
+
+We started by examing the supervised learning models to assess which one had the highest specificity level. Even though specificity was low, we can observe from the following graph that the CART model had the highest level\footnote{This was corroborated by testing the model in out of sample data Appendix - Part 4}.
+
+```{r, include=TRUE, fig.align="center", fig.width=8, fig.height=3, cache=TRUE}
+mod_list <- list("CART" = mod_cart, "Forest" = mod_forest)
+
+dotplot(resamples(mod_list))
+```
+
+We chose the CART model to obtain information about the predictive accuracy for the variable `attend_school` of each covariate. We conjectured that the top 6 covariates were enough controls to include in our linear regression\footnote{For more details see Appendix - Part 4 - Covariate Importance (CART model)}; `age` age of the child at time of interview, `hours_sleep` average sleeping hours for child, `hh_avg_educ` average level of education of household members, `hh_income` household combined income, `cult_act` whether ther have performed recent cultural activites &`domestic_hwork` whether the child helps in domestic household work.
+
+\newpage
+#References
+
+\begin{itemize}
+  \itemsep0em
+    \item Alboukadel Kassambara and Fabian Mundt (2017). factoextra: Extract and Visualize the Results of
+  Multivariate Data Analyses. R package version 1.0.5. https://CRAN.R-project.org/package=factoextra
+    \item Aportela, Fernando. (1998) Effects of Financial Access on Savings by Low-Income People, Mimeo, MIT.
+    \item Ashenfelter, Orley and Cecilia Rouse (1997). Income, Schooling, and Ability: Evidence from a New Sample of   Identical Twins, Quarterly Journal of Economics, Vol. 113, p. 253-284.
+    \item Augsburg, Britta, Ralph De Haas, Heike Harmgart, and Costas Meghir (2013) Micro-finance, Poverty and   Education. National Bureau of Economic Research, Inc NBER Working Papers 18538..
+    \item Becker, Gary (1975). Human Capital, 2nd ed., Columbia University Press, New York, NY, 1975.
+    \item Brandon M. Greenwell (2017). pdp: An R Package for Constructing Partial Dependence Plots. The R Journal,
+  9(1), 421--436. URL https://journal.r-project.org/archive/2017/RJ-2017-016/index.html.
+    \item Hadley Wickham and Evan Miller (2018). haven: Import and Export 'SPSS', 'Stata' and 'SAS' Files. R package
+  version 2.0.0. https://CRAN.R-project.org/package=haven
+    \item Hadley Wickham (2017). tidyverse: Easily Install and Load the 'Tidyverse'. R package version 1.2.1.
+  https://CRAN.R-project.org/package=tidyverse
+    \item Kirill Müller (2017). here: A Simpler Way to Find Your Files. R package version 0.1.
+  https://CRAN.R-project.org/package=here
+    \item Marvin N. Wright, Andreas Ziegler (2017). ranger: A Fast Implementation of Random Forests for High
+  Dimensional Data in C++ and R. Journal of Statistical Software, 77(1), 1-17. doi:10.18637/jss.v077.i01
+    \item Max Kuhn and Hadley Wickham (2019). recipes: Preprocessing Tools to Create Design Matrices. R package
+  version 0.1.5. https://CRAN.R-project.org/package=recipes
+    \item Max Kuhn. Contributions from Jed Wing, Steve Weston, Andre Williams, Chris Keefer, Allan Engelhardt, Tony
+  Cooper, Zachary Mayer, Brenton Kenkel, the R Core Team, Michael Benesty, Reynald Lescarbeau, Andrew Ziem,
+  Luca Scrucca, Yuan Tang, Can Candan and Tyler Hunt. (2019). caret: Classification and Regression Training.
+  R package version 6.0-82. https://CRAN.R-project.org/package=caret
+    \item Sebastien Le, Julie Josse, Francois Husson (2008). FactoMineR: An R Package for Multivariate Analysis.
+  Journal of Statistical Software, 25(1), 1-18. 10.18637/jss.v025.i01
+\end{itemize}
+
+\newpage
+
+#Appendix
+##Part 1 - Data Wrangling 
+###M X F L S - Book C
+Once the data sets were loaded we proceeded to eliminate several non-informative variables. Some of them were redundant variables such as more identification characteristics for the household members, other variables seemed to ask the same thing but with a slightly different wording. For more details please check the Codebook for book C annexed in the project files.
+
+The next step consisted of recoding the values of certain variables to reflect the different categories as the codebook instructed. The codebook provided numeric values to categorical variables which could be slightly confusing, we therefore recoded the values to reflect in a string what they actually meant. Additionally, we recoded dummy variables to be equal to one if the condition was true and zero otherwise (they were previously coded as threes as opposed to zeros); lastly, we created a resumed categorical variable for the size of the locality, if population was bigger thatn 100 thousand we categorized as `urban` and `rural` otherwise.
+
+In many of the books many missing values for certain variables were observed. We created a data frame per data set to show us how many missing values each variable had and kept only the variables which didn't have an excessive amount of missing values. The first data set we noticed a missing values problem was `c_cv`. The second data set where we applied the same logic was `c_cvo`; we removed the variables which have over forty percent of missing values in these data sets. 
+
+Once we kept the variables with no issues in all the data sets previously mentioned we merged the data sets into a master data set. It's important to mention that the merging was done by the variable `folio` which is the individual household id; by doing so, there were several household level characteristics which were attributed to an individual level. Observations of the households contruction materials for example will be the same for each individual member of the household. Finally, some recoding was done to as before to reflect the true categoreis of a variable with strings and dummies were appropriately transformed.
+
+It is worth mentioning the transformation of three individual level variables to household level variables. The first variable measured the highest education grade the household member had attended; since the focus will be children between 6 and 15 years of age we transformed the variable to show the average \textbf{adult} household member education. It seems likely that children whose accompanying adult household member have a higher education level will be more likely to have more education.
+
+The second variable we transformed was income. Since income only reflected the individual level of income and since many children do not have income themselves we transformed the variable to show the average income per household. Intuitively, if the aggregated or average income per household is bigger then perhaps children have more opportunities to attend school. It would have seemed naive to impute missing values of income for children with things other than a household level transformation of the individual level variable income.
+
+The third variable we transformed was relationship status. Since it is safe to assume that most children under 15 are single we decided to create a household level variable which reflected the relationship status of the household head. The intuition behind this is that perhaps there is some correlation between having married figures as parents or household heads. Once we created all the household level transformations to the mentioned variables, we filtered the data to only include children older than 5 and younger than 15.
+
+###M X F L S - Book V
+
+These data sets contained many variables with excessive amounts of missing values. Once again we went through all data sets to identify variables which had excesssive amounts of missing values. Once we identified the variables with many missing values we then proceeded to discard redundant variables and to merge all of the data sets into a master data set. Categorical variables were also transformed to show the actual string category they represent as opposed to numeric value. The last step consisted of recoding dummy variables to have a value of one if condition was true and zero otherwise.
+
+
+\newpage
+##Part 2 - Exploratory Analysis
+###Sample Age Distribution
+```{r, fig.align = "center", cache = TRUE, fig.width = 5, fig.height=3.6, include=TRUE}
+plot1 <- ggplot(master_2002, aes(x=age, y=(..count..)/sum(..count..))) +
+geom_bar(colour = "white", fill = "gray", alpha =.75) +
+theme_minimal() +
+coord_cartesian(ylim = c(0, .17)) +
+labs(x="Age",
+      y="Proportion",
+      title="Distribution of age 2002",
+      subtitle="Source: MXFLS 2002") +
+theme(plot.title=element_text(hjust=.5,size=10),
+        plot.subtitle=element_text(hjust=.5,size=8),
+        axis.title.x=element_text(size=8),
+        axis.title.y=element_text(size=8),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.minor.y=element_blank()) 
+
+plot2 <- ggplot(master_2005, aes(x=age, y=(..count..)/sum(..count..))) +
+geom_bar(colour = "white", fill = "gray", alpha =.75) +
+theme_minimal() +
+coord_cartesian(ylim = c(0, .17)) +
+labs(x="Age",
+      y="Proportion",
+      title="Distribution of age 2005",
+      subtitle="Source: MXFLS 2005") +
+theme(plot.title=element_text(hjust=.5,size=10),
+        plot.subtitle=element_text(hjust=.5,size=8),
+        axis.title.x=element_text(size=8),
+        axis.title.y=element_text(size=8),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.minor.y=element_blank()) 
+
+plot1
+rm(plot1, plot2)
+```
+
+###Correlation Matrix
+```{r, fig.width=7, fig.height=7, fig.align="left", cache=TRUE, include=TRUE}
+cor_2002 <-  select_if(master_2002, is.numeric) %>%
+  select(-c(hhid, individual_id, id_loc, community)) %>%
+  cor(use = "pairwise.complete.obs") 
+
+corrplot::corrplot(cor_2002, type = "upper", method="color")
+```
+\newpage
+
+##Part 3 - PCA 
+###Continuous Variables
+
+Continuous Variables case:
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_num <- master_2002 %>%
+  select_if(is.numeric) %>%
+  select(-c(hhid,individual_id, age, state, municipality, id_loc, community, attend_school))
+
+master_2002PCA <- PCA(master_2002_num, graph = FALSE)
+
+fviz_pca_biplot(master_2002PCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+###Categorical Variables
+####First round Ca
+
+Categorical variable: `material_wall`.
+
+Dummy variables kept: `material_wallAsbestos`, `concrete.partition.brick..block`, `material_wallWood`
+
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_dmy <- master_2002 %>%
+  select(c(material_wall))
+
+dmy <- dummyVars("~ .", data = master_2002_dmy, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002_dmy)) 
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+####Second round
+
+Categorical_variable : `material_roof`.
+
+Dummy variables kept: `material_roofConcrete.partition.brick..block`,
+`material_roofmetallic.laminate`, `material_roofPolyurethane`, `material_roofCardboard`.
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_dmy <- master_2002 %>%
+  select(c(material_roof))
+
+dmy <- dummyVars("~ .", data = master_2002_dmy, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002_dmy)) 
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+####Third round
+
+Categorical variable: `material_floor`.
+
+Dummy variables kept: `material_floorSoil`, `material_floorWood.slab.stone.slab.carpet.covers`, `material_floorOther`.
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_dmy <- master_2002 %>%
+  select(c(material_floor))
+
+dmy <- dummyVars("~ .", data = master_2002_dmy, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002_dmy)) 
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+####Fourth round
+
+Categorical variable: `type_hh`
+
+Dummy variables kept: `type_hhSole.House.sharing.walls`, `typehhRoom.or.house.in.a.vicinity`.
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_dmy <- master_2002 %>%
+  select(c(type_hh))
+
+dmy <- dummyVars("~ .", data = master_2002_dmy, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002_dmy)) 
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+####Fifth round
+
+categorical variable: `source_water`
+
+Dummy variables kept: `source_watergathered`, `source_waterOther`, `source_waterTap.water.inside`, `source_waterTap.water.outside`.
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_dmy <- master_2002 %>%
+  select(c(source_water))
+
+dmy <- dummyVars("~ .", data = master_2002_dmy, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002_dmy)) 
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+####Sixth Round
+
+Theoretical category: physical characteristics of the household.
+
+Dummy variables kept: `material_roofPolyurethane`, `material_floorWood.slab.stone.slab.carpet.covers`, `type_hhSole.House.sharing.walls`, `material_roofConcrete.partition.brick..block`, `material_wallConcrete.partition.brick..block`, `source_waterTap.water.outside` `material_floorSoil`, `material_roofCardboard`.
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+dmy <- dummyVars("~ .", data = master_2002, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002)) 
+
+master_2002_dmy <- select(master_2002_dmy,
+                          c(material_wallAsbestos, material_wallConcrete.partition.brick..block, material_wallWood,
+                         material_roofConcrete.partition.brick..block, material_roofmetallic.laminate,
+                         material_roofPolyurethane, material_roofCardboard, material_floorSoil,
+                         material_floorWood.slab.stone.slab.carpet.covers, material_floorOther,
+                         source_watergathered, source_waterOther, source_waterTap.water.inside,
+                         source_waterTap.water.outside, type_hhSole.House.sharing.walls,
+                         type_hhRoom.or.house.in.a.vicinity))
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+####Seventh Round
+Theoretical category: physical characteristics of the household.
+
+Dummy variables kept: `material_roofPolyurethane`,
+`material_floorWood.slab.stone.slab.carpet.covers`,
+`material_roofConcrete.partition.brick..block`, `material_wallConcrete.partition.brick..block`,
+`material_floorSoil`, `material_roofCardboard`.
+
+```{r, fig.align="center", fig.width=6, fig.height=4, cache=TRUE, include=TRUE}
+dmy <- dummyVars("~ .", data = master_2002, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002)) 
+
+master_2002_dmy <- select(master_2002_dmy,
+                          c(material_roofPolyurethane, material_floorWood.slab.stone.slab.carpet.covers,
+                            type_hhSole.House.sharing.walls, material_roofConcrete.partition.brick..block,
+                            material_wallConcrete.partition.brick..block, source_waterTap.water.outside,
+                            material_floorSoil, material_roofCardboard))
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+```{r, fig.align="center", fig.width=8, fig.height=3.5, cache=TRUE, include=TRUE}
+fviz_eig(master_2002_dmyPCA, addlabels = TRUE, geom = c("line"), linecolor = "steelblue") +
+  theme_minimal() +
+labs(x="Dimensions",
+      y="Percentage of Explained Variances",
+      title="Percentage of Explained Variances for physical characteristics of the household",
+      subtitle="Source: MXFLS 2002") +
+theme(plot.title=element_text(hjust=.5,size=10),
+        plot.subtitle=element_text(hjust=.5,size=8),
+        axis.title.x=element_text(size=8),
+        axis.title.y=element_text(size=8),
+        panel.grid.major.x=element_blank(),
+        panel.grid.minor.x=element_blank(),
+        panel.grid.minor.y=element_blank()) 
+  
+```
+
+\newpage
+####Eighth Round
+
+Categorical variable: `property_status`.
+
+Dummy variables kept: `property_statusOther property_statusRented`,
+`property_statusYour.own.and.fully.paid`, `property_statusYour.own.ejido.community.land`.
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_dmy <- master_2002 %>%
+  select(c(property_status))
+
+dmy <- dummyVars("~ .", data = master_2002_dmy, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002_dmy)) 
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+\newpage
+####Ninth Round
+
+Categorical variable: `marital_status`
+
+Dummy variables kept: `marital_status.yMarried`, `marital_status.ySingle`, `marital_status.yWidowed`.
+
+```{r, fig.align="center", fig.width=8, fig.height=8, cache=TRUE, include=TRUE}
+master_2002_dmy <- master_2002 %>%
+  select(c(marital_status.y))
+
+dmy <- dummyVars("~ .", data = master_2002_dmy, fullRank = TRUE) 
+master_2002_dmy <- data.frame(predict(dmy, newdata = master_2002_dmy)) 
+  
+
+master_2002_dmyPCA <- PCA(master_2002_dmy, graph = FALSE)
+
+fviz_pca_biplot(master_2002_dmyPCA,axes = 1:2, col.var = "black", alpha.var = .5,
+                invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+```
+
+
+
+
+\newpage
+
+##Part 4 - Supervised Learning
+
+###CART model
+
+```{r, include=TRUE}
+mod_cart
+```
+###Random forest
+```{r, include=TRUE}
+mod_forest
+```
+
+###Out of sample prediction CART model
+```{r, cache=TRUE, include=TRUE}
+pred_CART <- predict(mod_cart,newdata = master_2002_test_norm)
+confusionMatrix(table(pred_CART,master_2002_test_norm$attend_school))
+```
+###Out of sample prediction forest model
+```{r, include=TRUE, cache=TRUE}
+pred_forest <- predict(mod_forest,newdata = master_2002_test_norm)
+confusionMatrix(table(pred_forest,master_2002_test_norm$attend_school))
+```
+###Covariate Importance (CART model):
+
+```{r, include=TRUE, cache=TRUE}
+plot(varImp(mod_cart))
+```
+
+
