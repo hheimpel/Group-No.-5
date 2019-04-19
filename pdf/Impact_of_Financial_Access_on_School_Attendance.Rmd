@@ -13,15 +13,18 @@ documentclass: article
 knitr::opts_chunk$set(echo = FALSE, include=FALSE, warning=F,error = F,message = F)
 ```
 ```{r, cache=TRUE}
+require("sf")
 require("recipes")
 require("haven")
-library("here")
+require("here")
 require("tidyverse")
 require("readxl")
 require("pdp")
 require("caret")
 require("factoextra")
 require("FactoMineR")
+require("devtools")
+require("mxmaps")
 ```
 
 \textbf{Members:}\
@@ -39,16 +42,18 @@ require("FactoMineR")
 
 School attendance has been considered important to economic growth because of its association with productivity. The general idea behind this is that people with higher education have higher income, as evidenced by Ashenfelter (1997). There are many factors that could affect why a child attends or does not attend school. In particular, financial access could affect schooling through access to credit and savings with better conditions. According to Becker (1975), by limiting the incentives and capacity to invest in human capital, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development. In Aportela (1998) it was found that access to financial services increases savings on low-income people. What this could imply is that with better access to financial instruments that allow people to save money, a household head may better prepare for the expenses that will have to be made when the child goes to school. In other words, by having access to these financial services a household head may be able to ask for a credit in order to meet their basic needs instead of putting a child to work.
 
-The main question we are concerned with is whether access to banking services has an effect on school attendance for children under 15 and over 6 years of age. According to Augsburg, Harmgart and Meghir (2012) there are several channels through which microfinance can impact education. One possibility is that microfinance through the loan and the expanded business activity alleviates liquidity constraints and leads to an expansion of school attendance and a decrease in child labor. With a sufficiently low interest rate and a sufficiently high rise in productivity thanks to schooling, households likely will decide to attend school because the financial market allows them to smooth out their consumption, whereas income may have a sudden jump due to the differences in productivity that arise due to schooling. 
+According to Augsburg, Harmgart and Meghir (2012) there are several channels through which microfinance can impact education. One possibility is that microfinance through the loan and the expanded business activity alleviates liquidity constraints and leads to an expansion of school attendance and a decrease in child labor. With a sufficiently low interest rate and a sufficiently high rise in productivity thanks to schooling, households likely will decide to attend school because the financial market allows them to smooth out their consumption; however, the perception of the value of schooling is fundamental in the decision of attending or not attending school. 
 
-There are multiple data sets which will comprise the source of our analysis. The main source for the outcome `attend_school` and the control characteristics are in the Mexican Family Life Survey (ENNVIH). The ENNVIH is a set of multiple books each containing a set of data sets. We used the control book for 2002 (M X F L S - Book C). This book contains several control characteristics at an individual level (i.e. marital status, maximum education grade, etc.) and at a household level (i.e. proximity to water source, type of floor, etc.). The second book of data sets are contained in book V for 2002 (M X F L S - Book V). This book contains several characteristics at an individual level for children under 15 years of age. They include but are not limited to, child employment, child health characteristics and more. The last group of data sets is contained in the Bank Operational Information from the Comision Nacional Bancaria y de Valores (CNBV). This data set contains information about the locations of bank branches in 2002 for Mexico.
+There are multiple data sets which will comprise the source of our analysis. The main source for the outcome `attend_school` and the control characteristics are in the Mexican Family Life Survey (ENNVIH). The ENNVIH is a set of multiple books each containing a set of data sets. We used the control book for 2002 (M X F L S - Book C). This book contains several control characteristics at an individual level (i.e. marital status, maximum education grade, etc.) and at a household level (i.e. proximity to water source, type of floor, etc.). The second book of data sets are contained in book V for 2002 (M X F L S - Book V). This book contains several characteristics at an individual level for children under 15 years of age. They include but are not limited to, child employment, child health characteristics and more\footnote{http://www.ennvih-mxfls.org/english/ennvih-1.html}. The last group of data sets is contained in the Bank Operational Information from the Comision Nacional Bancaria y de Valores (CNBV). This data set contains information about the locations of bank branches in 2002 for Mexico\footnote{http://portafoliodeinformacion.cnbv.gob.mx/bm1/paginas/infoper.aspx}.
 
 #Methods and Research Design
 
 The first step consisted of creating a unique data set which contained all of the pertinent covariates from the multiple data sets. Extensive use of the `tidyverse` was necessary to recode, reorganize, merge and tidy the data.
-One issue with the `tidyverse` was the difficulty in running loops through the `mutate` function and creating functions which included `mutate`; however, the issue had a solution within the same package. Once the unique data set was constructed by merging all of the data sets in (M X F L S - Book C) & (M X F L S - Book V) contained over 90 covariates —even after removing redundant variables, variables with excessive percentage of missing values and containing little useful information— we used Principal Component Analysis (PCA) to reduce the number of covariates substantively; the `FactoMineR` and `factoextra` packages were used for this purpose. This was a labour intensive work and one suggestion could be having as output the suggested variables to drop.
+One issue with the `tidyverse` was the difficulty in running loops through the `mutate` function and creating functions which included `mutate`; however, the issue had a solution within the same package. Once the unique data set was constructed by merging all of the data sets in M X F L S - Book C & M X F L S - Book V, it contained over 90 covariates —even after removing redundant variables, variables with excessive percentage of missing values and containing little useful information— we used Principal Component Analysis (PCA) to reduce the number of covariates substantively; the `FactoMineR` and `factoextra` packages were used for this purpose. This was a labour intensive work and one suggestion could be having as output the suggested variables to drop.
 
 Even after running PCA there were still a considerable amount of covariates. For this purpose we used Supervised Machine Learning techniques to explore which covariates were the most important in predicting `attend_school`. The idea behind this was to be able to eliminate covariates which didn't contribute much to the prediction of school attendance; by doing so, it would provide evidence (minimal as it may be) that the included covariates when running the regression to ascertain the effects of bank access on school attendance were enough to eliminate or minimize bias in the regression coefficients. We ran two models in order to do this, a random forest —modifying the number of covariates included as a tuning parameter— and a classification and Regression Tree (CART) —modifying the complexity parameter as a tuning parameter— and chose the one with highest specificity metric to obtain the list of covariates which were most important in predicting `attend_school`.
+
+The last step in our research design was supposed to be a regression analysis to estimate the impact of bank proximity or bank access on school attendance. The problem was that the data set contained little variation in the outcome variable `attend_school`; over 93% of children over the age of 5 attended school. What this meant was that in addition to all of the usual limitations that regression analyses contain, our results would have likely been non-informative\footnote{A potential research design for the future could contain manipulations to the outcome variable to account for social desirability bias so that the data more accurately reflects reality.}. With this problem in mind, we decided to explore the data set and make visualizations for potential future research; we included a density map of Mexico by State showing the ratio of the numer of persons to the number of bank branches per state.
 
 #Tools
 
@@ -56,7 +61,7 @@ Even after running PCA there were still a considerable amount of covariates. For
 
 Manipulating the data and preparing it for analysis required a great deal of work; we briefly describe the process, the main tools used to clean the data and all of the manipulations done in order to obtain the final working data sets.
 
-We start by loading the control book for 2002 (M X F L S - Book C). Within the book there are four pertinent data sets to be used:
+We started by loading the control book for 2002 (M X F L S - Book C). Within the book there are four pertinent data sets to be used:
 
 1. `c_portad.dta`: contains the location of the households by State, Municipality and Locality. It further contains a variable indicating number of inhabitants in Locality. This is a Household level data set.
 2. `c_cv.dta`: contains physical characteristics of the household (i.e. whether it has a cooking room, a telephone, etc.). This is a Household level data set.
@@ -743,24 +748,13 @@ sch_age_plot
 rm(sch_age_plot, sch_age_plot2005)
 ```
 
-It is important to notice the scale on the y-axis, for every age group children are attending school at rates of over 90 percent —this influenced our goodness of fit measure in the supervised learning section—. This graph is important to keep in mind because the estimated impact of access to banks will be stratified by age to allow for the effect to be different by different groups of age. \footnote{To illustrate how this could have an impact on the aggregated or average effect (average across groups of age to be specific) refer to  Appendix - Part 2 - Exploratory Analysis - Sample Age Distribution.}
+It is important to notice the scale on the y-axis, for every age group children are attending school at rates of over 90 percent —this influenced our goodness of fit measure in the supervised learning section—. This graph is very important because it shows that there is likely social desirability bias. Therefore, the estimated impact of access to banks would be very unreliable even if the results were stratified by age to allow for the effect to be different by different groups of age. \footnote{To illustrate how this could have an impact on the aggregated or average effect (average across groups of age to be specific) refer to  Appendix - Part 2 - Exploratory Analysis - Sample Age Distribution.} This is the main reason why future research could focus on correcting for social desirability bias in order to run proper regression models; however, this task falls out of the scope of this project.
 
 ###Principal Component Analysis (PCA)
 
-Since we have many covariates in our data set, we looked at the correlation matrix to detect any potential problems with the variables \footnote{To look at the correlation plot refer to Appendix - Part 2 - Correlation Matrix}. We looked at numeric variables and dummies first and there were two variables which seem to have issues and it's intuitive to ascertain why. The correlation between the variable `work_1hr` indicating whether the child worked at least one hour the past week, `work_ever` which indicates whether the child has ever worked and `work_fam_bus` is missing; this could be due to the fact that they seem to be measuring the same thing. There seem to be fairly small numbers for the correlation of variables; however, this is not the entirety of the story, underlying structures could be hidden. 
+Since we have many covariates in our data set, we looked at the correlation matrix to detect any potential problems with the variables \footnote{To look at the correlation plot refer to Appendix - Part 2 - Correlation Matrix}. We looked at numeric variables and dummies first and there were two variables which seem to have issues and it's intuitive to ascertain why. The correlation between the variable `work_1hr` indicating whether the child worked at least one hour the past week, `work_ever` which indicates whether the child has ever worked and `work_fam_bus` is missing; this could be due to the fact that they seem to be measuring the same thing. The correlation coefficients in the matrix are fairly small; however, this is not the entirety of the story, underlying structures could be hidden. 
 
 To try to find underlying hidden structures in the data, we resorted to principal component analysis to see if the number of variables in the data could be reduced; for this purpose we used the `factoextra` and `FactoMineR` packages. The first step would be transforming categorical variables into dummy variables; however, given the number of variables this would result in, we focus on numerical and dummy variables at first. The second step is removing identification variables and the third step is scaling the remaining variables\footnote{The results can be observed in Appendix - Part 3 - PCA - Continuous Variables}.
-
-Some very interesting results were observed in the first PCA analysis for continuous variables:
-
-1) The vertical dimension can almost be entirely classified by the variable `domestic_hwork` which refers to domestic work in the household.
-2) The horizontal dimension includes several household characteristics. This dimension seems to suggest something along the lines of a welfare measure.
-3) The variables `work_1hr`, `work_fam_bus`, `work_ever` and `care_elderly` are very close together and near the vertical dimension. This suggest that they are measuring the same work dimension.
-4) The variables `electricity`, `watch_TV` and `telephone` are close in space. This makes intuitive sense because to have either a telephone or a TV you must have electricity. 
-5) The variables `play outside` and `hours_sleep` seep opposite to the vertical dimension which seems to be something relating to work; this makes intuitive sense because likely children who do domestic work sleep less and play less.
-6) The variables `sleep_kitchen`, `same_drink_wash_water` and `toilet` are also very close in space. It makes sense because household where someone sleeps in the kitchen, the same water is used for washing and drinking and there are no toilets could be measuring something along the lines of household quality.
-7) `carried_firewood` and `carried_water` seem to be measuring the same thing, carrying a production input or something along these lines.
-8) The number of rooms to sleep `rooms_sleep` and `cook_room` which are in close opposite direction of variables in point 6. are also very close together. 
 
 We proceeded to filter out these variables (keeping a single one for reference) to condense our number of variables. The results are the following: 
 
@@ -1101,7 +1095,7 @@ master_2002_banks <- master_2002_banks %>%
 
 #Results
 
-We started by examing the supervised learning models to assess which one had the highest specificity level. Even though specificity was low, we can observe from the following graph that the CART model had the highest level\footnote{This was corroborated by testing the model in out of sample data Appendix - Part 4}.
+We started by examing the supervised learning models to assess which one had the highest specificity level. Even though specificity was low (which is to be expected given the high levels of school attendance) we can observe from the following graph that the CART model had the highest level\footnote{This was corroborated by testing the model in out of sample data Appendix - Part 4}.
 
 ```{r, include=TRUE, fig.align="center", fig.width=8, fig.height=3, cache=TRUE}
 mod_list <- list("CART" = mod_cart, "Forest" = mod_forest)
@@ -1109,7 +1103,60 @@ mod_list <- list("CART" = mod_cart, "Forest" = mod_forest)
 dotplot(resamples(mod_list))
 ```
 
-We chose the CART model to obtain information about the predictive accuracy for the variable `attend_school` of each covariate. We conjectured that the top 6 covariates were enough controls to include in our linear regression\footnote{For more details see Appendix - Part 4 - Covariate Importance (CART model)}; `age` age of the child at time of interview, `hours_sleep` average sleeping hours for child, `hh_avg_educ` average level of education of household members, `hh_income` household combined income, `cult_act` whether ther have performed recent cultural activites &`domestic_hwork` whether the child helps in domestic household work.
+We chose the CART model to obtain information about the predictive accuracy for the variable `attend_school` of each covariate. The top 6 most important covariates in predicting school attendance provided intuitive results\footnote{For more details see Appendix - Part 4 - Covariate Importance (CART model)};The covariates were `age` age of the child at time of interview, `hours_sleep` average sleeping hours for child, `hh_avg_educ` average level of education of household members, `hh_income` household combined income, `cult_act` whether ther have performed recent cultural activites & `domestic_hwork` whether the child helps in domestic household work. All of these could plausibly be factors in school attendance and they seem to conform to intuition.
+
+Since running regressions would have produced unreliable results due to the previously mentioned factors, the last step we did was constructing a map of Mexico by State to show the ratio of population per state to the number of bank branches. The idea is to provide a basic tool and potentially think about the number of bank branches and their relationships with other variables since it is fair to say that banks do not randomly open bank branches. To do this the package `mxmaps`\footnote{The package is only available through Github, so the `devtools` was additionally required to load it.} and the package `sf` were necessary. In addition to this, we merged the total population by state from a file called `Tabulado.csv`\footnote{Available in the Data folder and from Mexico's Statistics Office http://www.beta.inegi.org.mx/app/tabulados/default.html?nc=mdemo02}. 
+
+```{r, eval=FALSE, cache=TRUE}
+#Banks data
+load(file=here("Data","azteca_2002_plotdata.Rdata"))
+
+azteca_2002_bankpop <- azteca_2002 %>% 
+  rename(region=edo) %>%
+  group_by(region) %>%
+  summarise(banks=sum(banks, na.rm=TRUE)) %>%
+  ungroup()
+
+#Population data
+pop <- read_csv(file = here("Data", "Population", "Tabulado.csv"))
+
+colnames(pop) <- c("edo_str", "population", "a", "b")
+
+pop <- pop %>% 
+  select(edo_str, population)
+
+pop <- pop[3:34,1:2]
+
+edo <- c(1:32)
+
+pop<- cbind(pop,edo)
+
+pop[5,3]=7
+pop[6,3]=8
+pop[7,3]=5
+pop[8,3]=6
+
+pop <- pop %>%
+  mutate(population=as.numeric(population)) %>%
+  select(region=edo, population)
+
+#Merging population and banks
+
+azteca_2002_bankpop <- left_join(azteca_2002_bankpop, pop) %>%
+  mutate(value=population/banks)
+
+map_bankpop <- mxstate_choropleth(azteca_2002_bankpop,num_colors = 3,
+                       title = "Average Number of Persons per Bank Branch in Mexico 2002") 
+
+ggsave(plot = map_bankpop, filename = "map_bankpop.pdf", device = "pdf", width=6,height=5)
+
+```
+```{r, include=TRUE, cache=TRUE, fig.align="center"}
+knitr::include_graphics("map_bankpop.pdf")
+```
+As a general observation, the southern states in Mexico are the most poor, and from the previous map we can observe that the ratio of the number of persons to bank branches is the highest in these states. One could conjecture that banks open branches where there is higher GDP per capita, regardless of total GDP per locality. This could potentially form the base for future research.
+
+
 
 \newpage
 #References
@@ -1126,6 +1173,8 @@ We chose the CART model to obtain information about the predictive accuracy for 
   9(1), 421--436. URL https://journal.r-project.org/archive/2017/RJ-2017-016/index.html.
     \item Hadley Wickham and Evan Miller (2018). haven: Import and Export 'SPSS', 'Stata' and 'SAS' Files. R package
   version 2.0.0. https://CRAN.R-project.org/package=haven
+    \item Diego Valle-Jones (2018). mxmaps: Create Maps of Mexico. https://www.diegovalle.net/mxmaps/,
+  https://github.com/diegovalle/mxmaps.
     \item Hadley Wickham (2017). tidyverse: Easily Install and Load the 'Tidyverse'. R package version 1.2.1.
   https://CRAN.R-project.org/package=tidyverse
     \item Kirill Müller (2017). here: A Simpler Way to Find Your Files. R package version 0.1.
@@ -1138,6 +1187,8 @@ We chose the CART model to obtain information about the predictive accuracy for 
   Cooper, Zachary Mayer, Brenton Kenkel, the R Core Team, Michael Benesty, Reynald Lescarbeau, Andrew Ziem,
   Luca Scrucca, Yuan Tang, Can Candan and Tyler Hunt. (2019). caret: Classification and Regression Training.
   R package version 6.0-82. https://CRAN.R-project.org/package=caret
+    \item Pebesma, E., 2018. Simple Features for R: Standardized Support for Spatial Vector Data. The R Journal,
+  https://journal.r-project.org/archive/2018/RJ-2018-009/
     \item Sebastien Le, Julie Josse, Francois Husson (2008). FactoMineR: An R Package for Multivariate Analysis.
   Journal of Statistical Software, 25(1), 1-18. 10.18637/jss.v025.i01
 \end{itemize}
@@ -1231,6 +1282,17 @@ master_2002PCA <- PCA(master_2002_num, graph = FALSE)
 fviz_pca_biplot(master_2002PCA,axes = 1:2, col.var = "black", alpha.var = .5,
                 invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
 ```
+
+Some very interesting conclusions from the previous graph include:
+
+1) The vertical dimension can almost be entirely classified by the variable `domestic_hwork` which refers to domestic work in the household.
+2) The horizontal dimension includes several household characteristics. This dimension seems to suggest something along the lines of a welfare measure.
+3) The variables `work_1hr`, `work_fam_bus`, `work_ever` and `care_elderly` are very close together and near the vertical dimension. This suggest that they are measuring the same work dimension.
+4) The variables `electricity`, `watch_TV` and `telephone` are close in space. This makes intuitive sense because to have either a telephone or a TV you must have electricity. 
+5) The variables `play outside` and `hours_sleep` seep opposite to the vertical dimension which seems to be something relating to work; this makes intuitive sense because likely children who do domestic work sleep less and play less.
+6) The variables `sleep_kitchen`, `same_drink_wash_water` and `toilet` are also very close in space. It makes sense because household where someone sleeps in the kitchen, the same water is used for washing and drinking and there are no toilets could be measuring something along the lines of household quality.
+7) `carried_firewood` and `carried_water` seem to be measuring the same thing, carrying a production input or something along these lines.
+8) The number of rooms to sleep `rooms_sleep` and `cook_room` which are in close opposite direction of variables in point 6. are also very close together.
 \newpage
 ###Categorical Variables
 ####First round Ca

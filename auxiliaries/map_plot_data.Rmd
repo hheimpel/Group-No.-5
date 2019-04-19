@@ -1,0 +1,107 @@
+---
+title: "Data Banks map plot"
+author: "Hector Hernandez, Tingjie  Meng, Liumin Chen"
+date: "April 19, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, cache=TRUE}
+require("recipes")
+require("haven")
+require("here")
+require("tidyverse")
+require("readxl")
+require("pdp")
+require("caret")
+require("factoextra")
+require("FactoMineR")
+require("devtools")
+```
+
+```{r, echo=FALSE, cache=TRUE}
+#Sucursales Azteca
+azteca_2002 <- read_xls(here("Data","BM_Operativa_200212.xls"))
+```
+
+```{r, cache=TRUE}
+#Preparing and cleaning azteca 2002 data
+azteca_2002 <- select(azteca_2002,c(1:3,5:36))
+aux <- c()
+  for (i in 1:35) {
+    aux[i] = azteca_2002[1,i]
+  }
+aux[[1]] <- "edo_str"
+aux[[2]] <- "munic_cnbv_code"
+aux[[3]] <- "mpio_str"
+colnames(azteca_2002) <- aux
+
+#Dropping observations with missing location
+azteca_2002 <- azteca_2002 %>%
+  filter(., !is.na(munic_cnbv_code))
+
+#Filling State missing values
+for (i in 1:nrow(azteca_2002)) {
+  if (is.na(azteca_2002[i,"edo_str"])) {
+    azteca_2002[i,"edo_str"]=azteca_2002[i-1,"edo_str"]
+    }else{
+      i
+  }
+}
+
+azteca_2002 <- filter(azteca_2002, edo_str!="Estado")
+```
+```{r, cache=TRUE}
+
+#Plot aux (according to INEGI code)
+edo <- c(1:32)
+by_edo_azt02 <- unique(azteca_2002$edo_str)
+by_edo_azt02 <- as.tibble(by_edo_azt02) %>%
+  rename(edo_str=value)
+
+by_edo_azt02[28,1]="Nayarit"
+
+by_edo_azt02 <- by_edo_azt02 %>%
+  arrange(edo_str) %>%
+  cbind(.,edo)
+
+by_edo_azt02[5,2]=7
+by_edo_azt02[6,2]=8
+by_edo_azt02[7,2]=5
+by_edo_azt02[8,2]=6
+
+#Merging states number identification with azteca_2002
+azteca_2002 <- azteca_2002 %>%
+  mutate(edo_str=ifelse(edo_str=="Tepic Nayarit", "Nayarit", edo_str))
+azteca_2002 <- left_join(azteca_2002,by_edo_azt02,by="edo_str")
+
+```
+
+```{r, cache=TRUE}
+#Renaming variables
+colnames(azteca_2002) <- c("edo_str","munic_cnbv_code","mpio_str","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland","edo")
+
+azteca_2002 <- select(azteca_2002, "edo_str","edo","mpio_str","amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
+
+```
+```{r, cache=TRUE}
+#Changing digit strings to numeric
+azt_numvar_names <- c("amex","banamex","afirme","mifel","bancen","azteca","bajio","inbursa","interacciones","invex","monex","santander","dresdner","boston","america","tokio_ufj","one","banorte","banregio","bansi","bancomer","credit_suisse","deutsche_bank","ge","republic","bital","ing","ixe","jp_morgan","scotiabank","serfin","royal_bank_scotland")
+for (x in azt_numvar_names) {
+  azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("as.double(",x,")"), x))
+}
+```
+```{r, cache=TRUE}
+#replacing missing values with zero
+for (x in azt_numvar_names) {
+  azteca_2002 <- azteca_2002 %>% mutate_(.dots=setNames(paste0("ifelse(is.na(",x,"),0,",x,")"),x))
+}
+```
+```{r, cache=TRUE}
+azteca_2002 <- azteca_2002 %>%
+  mutate(banks = select(., amex:royal_bank_scotland) %>% apply(1, sum, na.rm=TRUE))
+```
+
