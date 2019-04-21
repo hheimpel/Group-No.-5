@@ -72,6 +72,7 @@ by_edo_azt02[5,2]=7
 by_edo_azt02[6,2]=8
 by_edo_azt02[7,2]=5
 by_edo_azt02[8,2]=6
+by_edo_azt02[28,1]="Tamaulipas"
 
 #Merging states number identification with azteca_2002
 azteca_2002 <- azteca_2002 %>%
@@ -104,4 +105,5 @@ for (x in azt_numvar_names) {
 azteca_2002 <- azteca_2002 %>%
   mutate(banks = select(., amex:royal_bank_scotland) %>% apply(1, sum, na.rm=TRUE))
 ```
+
 

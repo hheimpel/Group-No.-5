@@ -1,0 +1,117 @@
+---
+title: "The Impact of Financial Access on School Attendance"
+author: "Hector Hernandez (hh744)"
+date: "April 29, 2019"
+output: ioslides_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+```{r, cache=TRUE, include=FALSE, echo=FALSE}
+require("sf")
+require("recipes")
+require("haven")
+require("here")
+require("tidyverse")
+require("readxl")
+require("pdp")
+require("caret")
+require("factoextra")
+require("FactoMineR")
+require("devtools")
+require("mxmaps")
+```
+
+## Topics
+
+- Problem Statement and Background
+- Methods Explored
+- Methods Used
+- Results
+
+# Problem Statement and Background 
+## Importance of Credit Constraints
+
+Why are credit constraints potentially important for school attendance?
+
+By limiting the incentives and capacity to invest in human capital, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development (Becker 1975).
+
+## Channels 
+
+Several channels through which microfinance can impact education:
+
+1. Microfinance through the loan and the expanded business activity alleviates liquidity constraints and leads to an expansion of school attendance and a decrease in child labor (Augsburg, Harmgart and Meghir 2012). 
+
+2. With a sufficiently low interest borrowing rate and a sufficiently high rise in productivity thanks to schooling, the classical economic model predicts more people will attend school with financial access. 
+
+# Methods Explored 
+
+## Regression Analysis
+
+Assess whether "access to banks" (defined as a dummy variable indicating whether the locality had a any bank branch or not) had any impact on school attendance. 
+
+Given that bank branches are not randomly set, control variables were needed to attempt to minimize bias of OLS estimates.
+
+## Principal Component Analysis (PCA)
+
+A multitude of data sets and variables in the Mexican Family Life Survey (MXFLS 2002) that could potentially be used as control variables were found. 
+
+The intention of PCA was to reduce the number of covariates to a manageable amount and discard those that provided little information.
+
+#Methods Used
+
+## Principal Component Analysis (PCA)
+
+The final data set contained over 90 covariates. The purpose of PCA was to reduce the number covariates to be included as control variables in our regression. 
+
+<img src="/Users/hheim/Documents/PPOL 670 - Intro to Data Science/Group-No.5-Project/Group-No.-5/Plots/PCA_PEV.png"; style="max-width:800px;float:center;">
+
+## Supervised Machine Learning
+
+PCA didn't provide a "smoking gun" set of covariates, the Percentage of Explained Variance was fairly uniform. 
+
+To reduce the number of covariates even further several supervised machine learning algorythms were explored to include only the most important predicting covariates.
+
+Caveat: **NOT A GOOD APPROACH FOR CAUSAL ESTIMATES VALIDITY!** Fortunately we are not seeking to publish.
+
+#Results
+
+## Principal Component Analysis
+
+<img src="/Users/hheim/Documents/PPOL 670 - Intro to Data Science/Group-No.5-Project/Group-No.-5/Plots/PCA_cont_var.png"; style="max-width:520px;float:center;">
+
+## Machine Learning
+
+Confusion Matrix and Statistics (CART Model, CP = .01)
+                                          
+            Sensitivity : 0.98714         
+            Specificity : 0.08081         
+         Pos Pred Value : 0.94403         
+         Neg Pred Value : 0.28571         
+             Prevalence : 0.94015         
+         Detection Rate : 0.92805         
+    Detection Prevalence : 0.98307         
+        Balanced Accuracy : 0.53397         
+                                          
+        'Positive' Class : Attend  
+        
+Specificity was the chosen metric for the model due to the high level of school attendance. **VERY BAD PREDICTIONS**
+
+## Machine Learning
+
+<img src="/Users/hheim/Documents/PPOL 670 - Intro to Data Science/Group-No.5-Project/Group-No.-5/Plots/importance_vars.png"; style="max-width:720px;float:center;">
+
+## Regression Analysis
+
+Unfortunately, the lack of variance for the outcome in the final data set provided very unreliable results (as partially seen in the machine learning model. There was apparently social desirability bias. Therefore, we discarded this part of project.
+
+<img src="/Users/hheim/Documents/PPOL 670 - Intro to Data Science/Group-No.5-Project/Group-No.-5/Plots/sch_age_plot.png"; style="max-width:400px;float:center;">
+
+## Banks distribution in Mexico
+
+<img src="/Users/hheim/Documents/PPOL 670 - Intro to Data Science/Group-No.5-Project/Group-No.-5/Plots/map_bankpop.png"; style="max-width:560px;float:center;">
+
+
+
