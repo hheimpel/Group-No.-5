@@ -23,6 +23,11 @@ require("FactoMineR")
 require("devtools")
 require("mxmaps")
 ```
+## Research Question
+
+Does access to formal financial markets increase school attendance for children under 15 years of age?
+
+Why do we care? Education is usually thought as a mean of social mobility and progress; through financial policies the government may indirectly affect school attendance.
 
 ## Topics
 
@@ -36,7 +41,7 @@ require("mxmaps")
 
 Why are credit constraints potentially important for school attendance?
 
-By limiting the incentives and capacity to invest in human capital, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development (Becker 1975).
+By limiting the incentives and **capacity to invest in human capital**, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development (Becker 1975).
 
 ## Channels 
 
@@ -45,6 +50,12 @@ Several channels through which microfinance can impact education:
 1. Microfinance through the loan and the expanded business activity alleviates liquidity constraints and leads to an expansion of school attendance and a decrease in child labor (Augsburg, Harmgart and Meghir 2012). 
 
 2. With a sufficiently low interest borrowing rate and a sufficiently high rise in productivity thanks to schooling, the classical economic model predicts more people will attend school with financial access. 
+
+## Data Sets Sources
+
+Mexican Family Life Survey 2002 (MXFLS 2002) - http://www.ennvih-mxfls.org/english/ennvih-1.html
+
+Comision Nacional Bancaria y de Valores - http://portafoliodeinformacion.cnbv.gob.mx/bm1/Paginas/infhistoriaoperativa.aspx
 
 # Methods Explored 
 
@@ -55,6 +66,8 @@ Assess whether "access to banks" (defined as a dummy variable indicating whether
 Given that bank branches are not randomly set, control variables were needed to attempt to minimize bias of OLS estimates.
 
 ## Principal Component Analysis (PCA)
+
+The point of PCA was to find a "sufficient" amount of covariates to include as controls such that Omitted Variable Bias was minimized or eliminated.
 
 A multitude of data sets and variables in the Mexican Family Life Survey (MXFLS 2002) that could potentially be used as control variables were found. 
 
@@ -72,7 +85,7 @@ The final data set contained over 90 covariates. The purpose of PCA was to reduc
 
 PCA didn't provide a "smoking gun" set of covariates, the Percentage of Explained Variance was fairly uniform. 
 
-To reduce the number of covariates even further several supervised machine learning algorythms were explored to include only the most important predicting covariates.
+To reduce the number of covariates even further several supervised machine learning algorithms were explored to include only the most important predicting covariates.
 
 Caveat: **NOT A GOOD APPROACH FOR CAUSAL ESTIMATES VALIDITY!** Fortunately we are not seeking to publish.
 
@@ -105,7 +118,7 @@ Specificity was the chosen metric for the model due to the high level of school 
 
 ## Regression Analysis
 
-Unfortunately, the lack of variance for the outcome in the final data set provided very unreliable results (as partially seen in the machine learning model. There was apparently social desirability bias. Therefore, we discarded this part of project.
+Unfortunately, the lack of variance for the outcome in the final data set provided very unreliable results (as partially seen in the machine learning model). There was apparently social desirability bias. Therefore, we discarded this part of project.
 
 <img src="/Users/hheim/Documents/PPOL 670 - Intro to Data Science/Group-No.5-Project/Group-No.-5/Plots/sch_age_plot.png"; style="max-width:400px;float:center;">
 
