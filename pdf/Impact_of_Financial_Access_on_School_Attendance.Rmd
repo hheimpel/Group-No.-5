@@ -13,11 +13,11 @@ documentclass: article
 knitr::opts_chunk$set(echo = FALSE, include=FALSE, warning=F,error = F,message = F)
 ```
 ```{r, cache=TRUE}
+require("tidyverse")
 require("sf")
 require("recipes")
 require("haven")
 require("here")
-require("tidyverse")
 require("readxl")
 require("pdp")
 require("caret")
@@ -31,8 +31,6 @@ require("mxmaps")
 \begin{itemize}
   \itemsep-.6em
   \item Hector Hernandez Heimpel (NetID: hh744) - email: hh744@georgetown.edu\
-  \item Tingjie  Meng (NetID: tm1305) - email: tm1305@georgetown.edu\
-  \item Liumin Chen (NetID: lc1077) - email: lc1077@georgetown.edu\
 \end{itemize}
 \textbf{Github Repository:} https://github.com/hheimpel/Group-No.-5 
 
@@ -40,7 +38,7 @@ require("mxmaps")
 
 #Problem Statement and Background
 
-School attendance has been considered important to economic growth because of its association with productivity. The general idea behind this is that people with higher education have higher income, as evidenced by Ashenfelter (1997). There are many factors that could affect why a child attends or does not attend school. In particular, financial access could affect schooling through access to credit and savings with better conditions. According to Becker (1975), by limiting the incentives and capacity to invest in human capital, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development. In Aportela (1998) it was found that access to financial services increases savings on low-income people. What this could imply is that with better access to financial instruments that allow people to save money, a household head may better prepare for the expenses that will have to be made when the child goes to school. In other words, by having access to these financial services a household head may be able to ask for a credit in order to meet their basic needs instead of putting a child to work.
+The main question we sought to answer was whether access to the formal financial markets increased school attendance. School attendance has been considered important to economic growth because of its association with productivity. The general idea behind this is that people with higher education have higher income, as evidenced by Ashenfelter (1997). There are many factors that could affect why a child attends or does not attend school. In particular, financial access could affect schooling through access to credit and savings with better conditions. According to Becker (1975), by limiting the incentives and capacity to invest in human capital, credit constraints play an important role in determining aggregate productivity, national income distributions, social mobility, and economic growth and development. In Aportela (1998) it was found that access to financial services increases savings on low-income people. What this could imply is that with better access to financial instruments that allow people to save money, a household head may better prepare for the expenses that will have to be made when the child goes to school. In other words, by having access to these financial services a household head may be able to ask for a credit in order to meet their basic needs instead of putting a child to work.
 
 According to Augsburg, Harmgart and Meghir (2012) there are several channels through which microfinance can impact education. One possibility is that microfinance through the loan and the expanded business activity alleviates liquidity constraints and leads to an expansion of school attendance and a decrease in child labor. With a sufficiently low interest rate and a sufficiently high rise in productivity thanks to schooling, households likely will decide to attend school because the financial market allows them to smooth out their consumption; however, the perception of the value of schooling is fundamental in the decision of attending or not attending school. 
 
@@ -704,8 +702,6 @@ rm(aux)
 
 ##Exploratory Analysis
 
-###School Attendance Distribution
-
 In our exploratory analysis, we started by simply looking at School Attendance distribution by age in 2002:
 
 ```{r, fig.align = "center", cache = TRUE, fig.width = 4, fig.height=3, include=TRUE}
@@ -745,7 +741,7 @@ sch_age_plot2005 <- group_by(master_2005, age) %>%
         panel.grid.minor.y=element_blank())
 
 sch_age_plot
-rm(sch_age_plot, sch_age_plot2005)
+rm(sch_age_plot2005)
 ```
 
 It is important to notice the scale on the y-axis, for every age group children are attending school at rates of over 90 percent —this influenced our goodness of fit measure in the supervised learning section—. This graph is very important because it shows that there is likely social desirability bias. Therefore, the estimated impact of access to banks would be very unreliable even if the results were stratified by age to allow for the effect to be different by different groups of age. \footnote{To illustrate how this could have an impact on the aggregated or average effect (average across groups of age to be specific) refer to  Appendix - Part 2 - Exploratory Analysis - Sample Age Distribution.} This is the main reason why future research could focus on correcting for social desirability bias in order to run proper regression models; however, this task falls out of the scope of this project.
@@ -766,7 +762,7 @@ master_2002_num <- master_2002 %>%
 
 master_2002PCA <- PCA(master_2002_num, graph = FALSE)
 
-fviz_eig(master_2002PCA, addlabels = TRUE, geom = c("line"), linecolor = "steelblue") +
+PCA_PEV <- fviz_eig(master_2002PCA, addlabels = TRUE, geom = c("line"), linecolor = "steelblue") +
   theme_minimal() +
 labs(x="Dimensions",
       y="Percentage of Explained Variances",
@@ -779,6 +775,8 @@ theme(plot.title=element_text(hjust=.5,size=10),
         panel.grid.major.x=element_blank(),
         panel.grid.minor.x=element_blank(),
         panel.grid.minor.y=element_blank()) 
+
+PCA_PEV
   
 ```
 
@@ -1279,8 +1277,10 @@ master_2002_num <- master_2002 %>%
 
 master_2002PCA <- PCA(master_2002_num, graph = FALSE)
 
-fviz_pca_biplot(master_2002PCA,axes = 1:2, col.var = "black", alpha.var = .5,
+PCA_cont_var <- fviz_pca_biplot(master_2002PCA,axes = 1:2, col.var = "black", alpha.var = .5,
                 invisible = c("ind", "ind.sup", "quali", "quanti.sup"))
+
+PCA_cont_var
 ```
 
 Some very interesting conclusions from the previous graph include:
@@ -1536,7 +1536,8 @@ confusionMatrix(table(pred_forest,master_2002_test_norm$attend_school))
 ###Covariate Importance (CART model):
 
 ```{r, include=TRUE, cache=TRUE}
-plot(varImp(mod_cart))
+importance_plot <- plot(varImp(mod_cart))
+importance_plot
 ```
 
 
